@@ -1,9 +1,8 @@
 {
   "name": "email-wake",
   "version": "0.1.0",
-  "description": "Email-wake OpenCode plugin: IMAP idle detection + reply injection (T2 skeleton).",
+  "description": "Email-wake OpenCode plugin: /afk to leave, reply by email to wake the agent.",
   "type": "module",
-  "private": true,
   "main": "index.js",
   "dependencies": {
     "@opencode-ai/plugin": "^1.18.25",

@@ -90,12 +90,40 @@ is seen by all instances immediately.
 
 ## Installation
 
-1. Copy this directory into your plugins folder
-   (e.g. `~/.config/opencode/plugins/email-wake/`).
-2. `cd` into it and run `npm install` (or `npm ci`).
-3. Create `config.json` from `config.example.json` and fill in your credentials.
-   `config.json` is gitignored — never commit real credentials.
-4. Reload opencode.
+One-shot installer (copies the plugin, installs deps, scaffolds config,
+registers the plugin, copies `/afk` `/back`):
+
+```bash
+git clone https://github.com/7emotions/email-wake
+cd email-wake
+node install.js
+# then edit ~/.config/opencode/plugins/email-wake/config.json and fill credentials
+```
+
+The installer:
+1. copies the source into `~/.config/opencode/plugins/email-wake/` (skipping
+   `node_modules`, `.git`, and any secret/runtime files);
+2. runs `npm install --omit=dev`;
+3. creates `config.json` from `config.example.json` (never overwrites an
+   existing one);
+4. registers the plugin in `~/.config/opencode/opencode.jsonc` (comment-
+   preserving text insertion — it never `JSON.parse`s a JSONC file);
+5. copies `command/afk.md` + `command/back.md` into
+   `~/.config/opencode/command/`.
+
+Then edit `config.json` (gitignored) and fill `imap.user` / `imap.password` /
+`smtp.user` / `smtp.password` / `recipient`. Reload opencode.
+
+### Manual install
+
+Equivalent manual steps:
+
+1. Copy this directory into `~/.config/opencode/plugins/email-wake/`.
+2. `cd` into it and run `npm install`.
+3. Create `config.json` from `config.example.json` and fill credentials.
+4. Add the plugin path to the `plugin` array in `~/.config/opencode/opencode.jsonc`.
+5. Copy `command/afk.md` + `command/back.md` into `~/.config/opencode/command/`.
+6. Reload opencode.
 
 The plugin depends on `@opencode-ai/plugin`, `@opencode-ai/sdk`, `imapflow`,
 `mailparser`, and `nodemailer`.
