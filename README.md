@@ -46,13 +46,13 @@ flowchart TB
 
 ```text
 Install and configure email-wake by following the instructions here:
-https://raw.githubusercontent.com/7emotions/email-wake/main/INSTALLATION.md
+https://raw.githubusercontent.com/7emotions/afk/main/INSTALLATION.md
 ```
 
 ### 一键安装（手动）
 
 ```bash
-git clone https://github.com/7emotions/email-wake
+git clone https://github.com/7emotions/afk
 cd email-wake
 node install.js
 # then edit ~/.config/opencode/plugins/email-wake/config.json and fill credentials
