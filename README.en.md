@@ -1,16 +1,16 @@
 <div align="center">
 
-# email-wake
+# afk
 
-**Ask your agent a decision question by email — and wake it up when you reply, from anywhere.**
+**`afk` = Away From Keyboard**
+
+An [OpenCode](https://opencode.ai) plugin: type `/afk` to leave your screen, and
+when the running agent hits a decision point it emails the question to you; reply
+from anywhere and the session auto-resumes — no need to return to the terminal.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-brightgreen.svg)](#)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#)
-
-An [OpenCode](https://opencode.ai) plugin that lets a running agent ask the human a
-**decision question by email** and **auto-resume the session** when the human replies —
-without the human touching the terminal.
 
 **English** · [**简体中文**](README.md)
 

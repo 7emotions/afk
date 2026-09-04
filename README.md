@@ -1,14 +1,14 @@
 <div align="center">
 
-# email-wake
+# afk
 
-**用邮件向你的智能体提出决策问题，无论身在何处，回复邮件即可唤醒它。**
+**`afk` = Away From Keyboard（离开键盘）**
+
+一个 [OpenCode](https://opencode.ai) 插件：在终端输入 `/afk` 离开屏幕后，运行中的智能体遇到决策点时会把问题通过邮件发给你；你在任何地方回复邮件，会话便自动唤醒继续——无需回到终端。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-brightgreen.svg)](#)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#)
-
-这是一个 [OpenCode](https://opencode.ai) 插件，让运行中的智能体可以通过邮件向用户提出**决策问题**，并在用户回复时**自动恢复会话**，全程无需用户触碰终端。
 
 [**English**](README.en.md) · **简体中文**
 
