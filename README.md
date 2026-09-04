@@ -16,15 +16,6 @@
 
 </div>
 
-```mermaid
-flowchart TB
-    A[agent hits a decision point] --> B["request_decision()<br/>emails the question"]
-    B --> C[you reply from anywhere]
-    C --> D["daemon detects it<br/>(IMAP IDLE, no polling)"]
-    D --> E["reply injected<br/>(data, not instruction)"]
-    E --> F[agent wakes and continues]
-```
-
 ## 功能
 
 - **邮件决策**：智能体提问，你在任何地方作答，无需终端

@@ -18,15 +18,6 @@ from anywhere and the session auto-resumes — no need to return to the terminal
 
 </div>
 
-```mermaid
-flowchart TB
-    A[agent hits a decision point] --> B["request_decision()<br/>emails the question"]
-    B --> C[you reply from anywhere]
-    C --> D["daemon detects it<br/>(IMAP IDLE, no polling)"]
-    D --> E["reply injected<br/>(data, not instruction)"]
-    E --> F[agent wakes and continues]
-```
-
 ## Features
 
 - **Email decisions** — the agent asks, you answer from anywhere, no terminal needed
