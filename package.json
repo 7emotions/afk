@@ -1,0 +1,15 @@
+{
+  "name": "email-wake",
+  "version": "0.1.0",
+  "description": "Email-wake OpenCode plugin: IMAP idle detection + reply injection (T2 skeleton).",
+  "type": "module",
+  "private": true,
+  "main": "index.js",
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.18.25",
+    "@opencode-ai/sdk": "^1.18.25",
+    "imapflow": "^1.7.8",
+    "mailparser": "^3.9.20",
+    "nodemailer": "^9.1.1"
+  }
+}

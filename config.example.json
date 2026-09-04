@@ -1,0 +1,46 @@
+{
+  "imap": {
+    "host": "imap.qq.com",
+    "port": 993,
+    "secure": true,
+    "user": "your-qq-email@qq.com",
+    "password": "<your-qq-auth-code>"
+  },
+  "smtp": {
+    "host": "smtp.qq.com",
+    "port": 465,
+    "secure": true,
+    "user": "your-qq-email@qq.com",
+    "password": "<your-qq-auth-code>"
+  },
+  "recipient": "your-qq-email@qq.com",
+  "folder": "INBOX",
+
+  "tuning": {
+    "claimTtlMs": 60000,
+    "reconnectBaseMs": 1000,
+    "reconnectMaxMs": 30000,
+    "idleRenewMs": 1500000,
+    "autoIdleDelayMs": 1000,
+    "backoffInitialMs": 1000,
+    "backoffMaxMs": 60000
+  },
+
+  "messages": {
+    "decisionBody": {
+      "context": "Context:",
+      "question": "Decision:",
+      "options": "Options:",
+      "recommendation": "Recommendation:",
+      "replyInstruction": "Reply to this email with your answer"
+    },
+    "tool": {
+      "requested": "Decision requested — pause and end this turn; wait for the reply to be injected",
+      "alreadyPending": "A decision is already pending — wait for the reply",
+      "mainSessionOnly": "Call from the main session only",
+      "modeOff": "Email mode is off — the human is at the screen. Use the question tool to ask in the conversation instead.",
+      "modeOn": "Email mode is ON — the human has left the screen; request_decision will email them.",
+      "modeDisabled": "Email mode is OFF — request_decision will use the question tool instead."
+    }
+  }
+}
