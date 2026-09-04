@@ -1,6 +1,8 @@
+<div align="center">
+
 # email-wake
 
-> Ask your agent a decision question by email — and wake it up when you reply, from anywhere.
+**Ask your agent a decision question by email — and wake it up when you reply, from anywhere.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-brightgreen.svg)](#)
@@ -9,6 +11,8 @@
 An [OpenCode](https://opencode.ai) plugin that lets a running agent ask the human a
 **decision question by email** and **auto-resume the session** when the human replies —
 without the human touching the terminal.
+
+</div>
 
 ```mermaid
 flowchart LR
@@ -39,21 +43,11 @@ contract and the "pause after asking" rule).
 
 ### Copy-paste install — give this to your LLM
 
-Paste this prompt into any coding agent (OpenCode, Claude Code, …) and it will
-install email-wake for you:
+Paste this into any coding agent (OpenCode, Claude Code, …):
 
-```markdown
-Install the email-wake OpenCode plugin:
-
-1. Download https://github.com/7emotions/email-wake/archive/refs/tags/v0.1.0.tar.gz
-2. Extract it into ~/.config/opencode/plugins/email-wake/ — strip the top-level
-   directory so `index.js` sits directly inside `email-wake/`
-3. Run `npm install --omit=dev` in that directory
-4. Run `node install.js` — it registers the plugin in `opencode.jsonc`,
-   scaffolds `config.json`, and copies the `/afk` + `/back` commands
-5. Edit `config.json` and fill `imap.user` / `imap.password` / `smtp.user` /
-   `smtp.password` / `recipient`
-6. Reload opencode, then use `/afk` to leave and `/back` to return
+```text
+Install and configure email-wake by following the instructions here:
+https://raw.githubusercontent.com/7emotions/email-wake/main/INSTALLATION.md
 ```
 
 ### One-shot installer (manual)
@@ -268,30 +262,28 @@ single **SSE stream** to it. The daemon parses replies, persists them durably,
 and **pushes** them over SSE; each instance self-checks ownership, claims, and
 injects IN-PROCESS.
 
-```
-[instance A]            [instance B]          ... N instances
- thin plugin             thin plugin
-  ensure daemon           ensure daemon        (probe /health; spawn if absent)
-  SSE subscriber          SSE subscriber       (one stream per instance)
-  request_decision:       request_decision:
-    SMTP send +             SMTP send +
-    POST /register          POST /register
-    {sessionID}             {sessionID}
-         └──────────┬──────────┘
-                 ┌──▼────────────────┐
-                 │ email-wake DAEMON │  ← ONE process (atomic single-instance)
-                 │ · GET /health     │     binds fixed port; loser exits on
-                 │ · GET /events     │     EADDRINUSE (SSE push)
-                 │ · POST /claim     │     atomic claim (multi-instance dedupe)
-                 │ · POST /ack       │     markSeen + journal + remove pending
-                 │ · GET /pending    │     reconnect catch-up
-                 │ · POST /register  │     single-outstanding-decision guard
-                 │ · GET /mode       │     GLOBAL email mode ("on"/"off")
-                 │ · POST /mode      │     set mode + persist + broadcast
-                 │ · THE only IMAP   │     IDLE watcher + catch-up scan
-                 │ · pending-store   │     DURABLE parsed replies (pending.json)
-                 │ · mode-store      │     DURABLE global mode (mode.json)
-                 └──────────────────┘
+```mermaid
+flowchart TB
+    subgraph instances["opencode instances — thin client plugins"]
+        A["instance A<br/>ensure daemon · SSE subscriber · request_decision"]
+        B["instance B<br/>ensure daemon · SSE subscriber · request_decision"]
+        dots["... N instances"]
+    end
+
+    subgraph daemon_box["email-wake DAEMON — one process (atomic single-instance)"]
+        D["HTTP endpoints<br/>/health · /events · /claim · /ack · /pending · /register · /mode"]
+        W["the only IMAP IDLE watcher<br/>+ catch-up scan"]
+        P["pending-store<br/>durable replies (pending.json)"]
+        M["mode-store<br/>durable global mode (mode.json)"]
+    end
+
+    A --> D
+    B --> D
+    D --> W
+    D --> P
+    D --> M
+    D -. SSE push .-> A
+    D -. SSE push .-> B
 ```
 
 The daemon binds a fixed port (default `4100`, override `EMAIL_WAKE_DAEMON_PORT`).
@@ -302,36 +294,31 @@ detached daemon and polls until healthy.
 
 ### Full flow
 
-```
-agent hits a decision point
-        │  request_decision(subject, question)
-        ▼
-plugin checks GLOBAL email mode (GET /mode)
-        │  mode "off" → refuse ("Email mode is off … use the question tool")
-        ▼
-plugin ensures daemon up → POST /register {rootSessionID}
-        │  (alreadyPending → "A decision is already pending" with NO second email)
-        ▼
-SMTP sends "[omo:<rootSessionID>] <subject>" to the configured recipient
-        │  agent STOPS and ends its turn (pauses)
-        ▼
-human replies (reply prefix, or In-Reply-To header)
-        │  daemon's IMAP IDLE "exists" push (or catch-up scan on connect/reconnect)
-        ▼
-daemon: scan UID > cursor (incremental) → fetch → parse → PERSIST (pending.json)
-        │  NO \Seen, NO journal yet — the mail stays UNSEEN
-        │  broadcast `delivery {uid, sessionID, body, from}` over SSE
-        ▼
-each connected instance self-checks: session.directory === thisInstance.directory
-        │  non-owner ignores; owner POSTs /claim {uid, sessionID, instanceId}
-        ▼
-owner injects IN-PROCESS (session.promptAsync {path:{id}, body:{parts}}) — DATA-NOT-INSTRUCTION
-        │  POST /ack {uid, sessionID, instanceId}
-        ▼
-daemon /ack: markSeen + journal the UID, then remove the pending
-        │  release the registry reservation (next decision may be asked)
-        ▼
-the owning instance's agent wakes with the human's answer and continues
+```mermaid
+sequenceDiagram
+    participant Agent
+    participant Plugin
+    participant Daemon
+    participant Human
+
+    Agent->>Plugin: request_decision(subject, question)
+    Plugin->>Daemon: GET /mode
+    alt mode is "off"
+        Plugin-->>Agent: refuse → "use the question tool"
+    else mode is "on"
+        Plugin->>Daemon: POST /register {rootSessionID}
+        Plugin->>Human: SMTP "[omo:rootSessionID] subject"
+        Note over Agent: STOPS and ends its turn (pauses)
+        Human->>Daemon: reply email (reply prefix / In-Reply-To)
+        Daemon->>Daemon: IMAP IDLE push → scan UID > cursor → parse → persist pending.json
+        Note over Daemon: mail stays UNSEEN, no journal yet
+        Daemon-->>Plugin: SSE delivery {uid, sessionID, body, from}
+        Plugin->>Plugin: self-check ownership → POST /claim
+        Plugin->>Agent: inject reply (data, not instruction)
+        Plugin->>Daemon: POST /ack
+        Daemon->>Daemon: markSeen + journal → remove pending → release reservation
+        Agent->>Agent: wakes with the answer and continues
+    end
 ```
 
 ### P0 fix: no message loss
