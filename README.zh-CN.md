@@ -15,7 +15,7 @@
 </div>
 
 ```mermaid
-flowchart LR
+flowchart TB
     A[agent hits a decision point] --> B["request_decision()<br/>emails the question"]
     B --> C[you reply from anywhere]
     C --> D["daemon detects it<br/>(IMAP IDLE, no polling)"]
