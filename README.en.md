@@ -38,7 +38,7 @@ contract and the "pause after asking" rule).
 
 ### Copy-paste install — give this to your LLM
 
-Paste this into any coding agent (OpenCode, Claude Code, …):
+Paste this into any coding agent to have it install the plugin in your opencode environment:
 
 ```text
 Install and configure email-wake by following the instructions here:

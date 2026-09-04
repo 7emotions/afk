@@ -35,7 +35,7 @@
 
 ### 复制粘贴式安装（直接交给你的 LLM）
 
-将以下内容粘贴给任意编码智能体（OpenCode、Claude Code……）：
+将以下内容粘贴给任意编码智能体，让它照着在你的 opencode 环境中完成安装：
 
 ```text
 Install and configure email-wake by following the instructions here:
