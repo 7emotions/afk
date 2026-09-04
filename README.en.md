@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/logo.svg" alt="afk logo" width="120">
+
 # afk
 
 **`afk` = Away From Keyboard**
