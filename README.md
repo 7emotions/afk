@@ -14,6 +14,8 @@ without the human touching the terminal.
 
 </div>
 
+**English** · [**简体中文**](README.zh-CN.md)
+
 ```mermaid
 flowchart LR
     A[agent hits a decision point] --> B["request_decision()<br/>emails the question"]
