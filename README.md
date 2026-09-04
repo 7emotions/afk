@@ -12,9 +12,9 @@ An [OpenCode](https://opencode.ai) plugin that lets a running agent ask the huma
 **decision question by email** and **auto-resume the session** when the human replies —
 without the human touching the terminal.
 
-</div>
-
 **English** · [**简体中文**](README.zh-CN.md)
+
+</div>
 
 ```mermaid
 flowchart LR

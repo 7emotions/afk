@@ -10,9 +10,9 @@
 
 这是一个 [OpenCode](https://opencode.ai) 插件，让运行中的智能体可以通过邮件向用户提出**决策问题**，并在用户回复时**自动恢复会话**，全程无需用户触碰终端。
 
-</div>
-
 [**English**](../README.md) · **简体中文**
+
+</div>
 
 ```mermaid
 flowchart LR
