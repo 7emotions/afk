@@ -278,7 +278,7 @@ flowchart TB
         dots["... N instances"]
     end
 
-    subgraph daemon_box["email-wake DAEMON — one process (atomic single-instance)"]
+    subgraph daemon_box["afk DAEMON — one process (atomic single-instance)"]
         D["HTTP endpoints<br/>/health · /events · /claim · /ack · /pending · /register · /mode"]
         W["the only IMAP IDLE watcher<br/>+ catch-up scan"]
         P["pending-store<br/>durable replies (pending.json)"]
