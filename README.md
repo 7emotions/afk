@@ -1,17 +1,97 @@
 # email-wake
 
-A standalone [OpenCode](https://opencode.ai) plugin that lets a running agent ask
-the human a **decision question by email** and then **auto-resume the session**
-when the human replies — without the human touching the terminal.
+> Ask your agent a decision question by email — and wake it up when you reply, from anywhere.
 
-When the agent hits a decision point it calls the `request_decision` tool, which
-emails the question to a configured recipient, then pauses and ends the turn. A
-background daemon watches the mailbox (IMAP IDLE, no polling), and when the
-human replies, the reply is injected back into the owning session as a new user
-message — framed as *data, not instruction* — and the agent continues.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-brightgreen.svg)](#)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#)
+
+An [OpenCode](https://opencode.ai) plugin that lets a running agent ask the human a
+**decision question by email** and **auto-resume the session** when the human replies —
+without the human touching the terminal.
+
+```mermaid
+flowchart LR
+    A[agent hits a decision point] --> B["request_decision()<br/>emails the question"]
+    B --> C[you reply from anywhere]
+    C --> D["daemon detects it<br/>(IMAP IDLE, no polling)"]
+    D --> E["reply injected<br/>(data, not instruction)"]
+    E --> F[agent wakes and continues]
+```
+
+## Features
+
+- **Email decisions** — the agent asks, you answer from anywhere, no terminal needed
+- **`/afk` mode gate** — email only fires after you've left the screen (`/back` returns)
+- **Zero polling** — IMAP IDLE push + one-time catch-up scan, never a timed poller
+- **Push delivery** — SSE broadcast + per-instance ownership self-check (multi-instance safe)
+- **No message loss** — durable pending-store + ack-after-inject (crash-safe)
+- **i18n** — English defaults, `config.messages` override for any language
+- **Data-not-instruction** — prompt-injection guard on every injected reply
+- **One-shot installer** — `node install.js` copies, installs, registers, and scaffolds
 
 See [`AGENTS.md`](AGENTS.md) for the agent-facing instruction (the `request_decision`
 contract and the "pause after asking" rule).
+
+---
+
+## Installation
+
+### Copy-paste install — give this to your LLM
+
+Paste this prompt into any coding agent (OpenCode, Claude Code, …) and it will
+install email-wake for you:
+
+```markdown
+Install the email-wake OpenCode plugin:
+
+1. Download https://github.com/7emotions/email-wake/archive/refs/tags/v0.1.0.tar.gz
+2. Extract it into ~/.config/opencode/plugins/email-wake/ — strip the top-level
+   directory so `index.js` sits directly inside `email-wake/`
+3. Run `npm install --omit=dev` in that directory
+4. Run `node install.js` — it registers the plugin in `opencode.jsonc`,
+   scaffolds `config.json`, and copies the `/afk` + `/back` commands
+5. Edit `config.json` and fill `imap.user` / `imap.password` / `smtp.user` /
+   `smtp.password` / `recipient`
+6. Reload opencode, then use `/afk` to leave and `/back` to return
+```
+
+### One-shot installer (manual)
+
+```bash
+git clone https://github.com/7emotions/email-wake
+cd email-wake
+node install.js
+# then edit ~/.config/opencode/plugins/email-wake/config.json and fill credentials
+```
+
+The installer:
+1. copies the source into `~/.config/opencode/plugins/email-wake/` (skipping
+   `node_modules`, `.git`, and any secret/runtime files);
+2. runs `npm install --omit=dev`;
+3. creates `config.json` from `config.example.json` (never overwrites an
+   existing one);
+4. registers the plugin in `~/.config/opencode/opencode.jsonc` (comment-
+   preserving text insertion — it never `JSON.parse`s a JSONC file);
+5. copies `command/afk.md` + `command/back.md` into
+   `~/.config/opencode/command/`.
+
+Then edit `config.json` (gitignored) and fill `imap.user` / `imap.password` /
+`smtp.user` / `smtp.password` / `recipient`. Reload opencode.
+
+### Manual steps
+
+Equivalent steps, no installer:
+
+1. Copy this directory into `~/.config/opencode/plugins/email-wake/`.
+2. `cd` into it and run `npm install`.
+3. Create `config.json` from `config.example.json` and fill credentials.
+4. Add the plugin path to the `plugin` array in `~/.config/opencode/opencode.jsonc`.
+5. Copy `command/afk.md` + `command/back.md` into `~/.config/opencode/command/`.
+6. Reload opencode.
+
+The plugin depends on `@opencode-ai/plugin`, `@opencode-ai/sdk`, `imapflow`,
+`mailparser`, and `nodemailer`.
 
 ---
 
@@ -87,49 +167,6 @@ The mode state lives on the daemon (`mode.json`), is served over `GET /mode` /
 is seen by all instances immediately.
 
 ---
-
-## Installation
-
-One-shot installer (copies the plugin, installs deps, scaffolds config,
-registers the plugin, copies `/afk` `/back`):
-
-```bash
-git clone https://github.com/7emotions/email-wake
-cd email-wake
-node install.js
-# then edit ~/.config/opencode/plugins/email-wake/config.json and fill credentials
-```
-
-The installer:
-1. copies the source into `~/.config/opencode/plugins/email-wake/` (skipping
-   `node_modules`, `.git`, and any secret/runtime files);
-2. runs `npm install --omit=dev`;
-3. creates `config.json` from `config.example.json` (never overwrites an
-   existing one);
-4. registers the plugin in `~/.config/opencode/opencode.jsonc` (comment-
-   preserving text insertion — it never `JSON.parse`s a JSONC file);
-5. copies `command/afk.md` + `command/back.md` into
-   `~/.config/opencode/command/`.
-
-Then edit `config.json` (gitignored) and fill `imap.user` / `imap.password` /
-`smtp.user` / `smtp.password` / `recipient`. Reload opencode.
-
-### Manual install
-
-Equivalent manual steps:
-
-1. Copy this directory into `~/.config/opencode/plugins/email-wake/`.
-2. `cd` into it and run `npm install`.
-3. Create `config.json` from `config.example.json` and fill credentials.
-4. Add the plugin path to the `plugin` array in `~/.config/opencode/opencode.jsonc`.
-5. Copy `command/afk.md` + `command/back.md` into `~/.config/opencode/command/`.
-6. Reload opencode.
-
-The plugin depends on `@opencode-ai/plugin`, `@opencode-ai/sdk`, `imapflow`,
-`mailparser`, and `nodemailer`.
-
----
-
 ## Configuration
 
 Both the plugin (`index.js`) and the daemon (`daemon.js`) read `config.json` in
@@ -377,18 +414,20 @@ injected twice, but is **never lost**.
 |------|------|
 | `index.js` | Plugin entry — thin client: ensure daemon, start the SSE subscriber, expose `request_decision` + `set_email_mode` |
 | `daemon.js` | The single-watcher daemon (bind, HTTP: SSE/claim/ack/pending/register/mode, watcher, signals) |
-| `pending-store.js` | Durable pending deliveries on disk (P0 fix — claim/ack atomicity + TTL) |
-| `mode-store.js` | Durable GLOBAL email mode on disk (`mode.json`, default `"off"`) |
-| `subscribe.js` | In-process SSE subscriber: ownership self-check → claim → inject → ack + reconnect catch-up |
-| `registry.js` | In-memory single-outstanding-decision guard (no routing) |
+| `request-decision.js` | The `request_decision` tool (mode gate → register → SMTP send → release) |
 | `config.js` | Config load + validation + env overrides + `tuning` defaults + password redaction |
 | `messages.js` | User/agent-facing strings (default English, `config.messages` override) |
-| `watcher.js` | Single IMAP IDLE connection, auto-reconnect, catch-up hook |
-| `process.js` | Scan → fetch → parse → persist pipeline (no ack) |
-| `uid-cursor.js` | Persistent "highest processed UID" cursor (detection state) |
-| `inject.js` | Reply injection (DATA-NOT-INSTRUCTION) + `\Seen`/journal ack |
-| `reply-parse.js` | Pure reply detection + token/body extraction |
-| `request-decision.js` | The `request_decision` tool (mode gate → register → SMTP send → release) |
+| `install.js` | One-shot installer (copy, `npm install`, scaffold config, register, copy commands) |
+| `core/watcher.js` | Single IMAP IDLE connection, auto-reconnect, catch-up hook |
+| `core/process.js` | Scan → fetch → parse → persist pipeline (no ack) |
+| `core/reply-parse.js` | Pure reply detection + token/body extraction |
+| `core/inject.js` | Reply injection (DATA-NOT-INSTRUCTION) + `\Seen`/journal ack |
+| `core/subscribe.js` | In-process SSE subscriber: ownership self-check → claim → inject → ack + reconnect catch-up |
+| `store/pending-store.js` | Durable pending deliveries on disk (P0 fix — claim/ack atomicity + TTL) |
+| `store/mode-store.js` | Durable GLOBAL email mode on disk (`mode.json`, default `"off"`) |
+| `store/registry.js` | In-memory single-outstanding-decision guard (no routing) |
+| `store/uid-cursor.js` | Persistent "highest processed UID" cursor (detection state) |
+| `command/` | `/afk` + `/back` command templates (copied to `~/.config/opencode/command/`) |
 | `test/` | `node:test` unit suites + live integration scripts |
 
 ## License
