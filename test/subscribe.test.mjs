@@ -12,8 +12,8 @@
 import { test, after } from "node:test"
 import assert from "node:assert/strict"
 
-import { startSubscription, handleDelivery } from "../subscribe.js"
-import { buildPayload } from "../inject.js"
+import { startSubscription, handleDelivery } from "../core/subscribe.js"
+import { buildPayload } from "../core/inject.js"
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 

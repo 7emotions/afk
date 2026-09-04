@@ -23,9 +23,9 @@
 // "IDLE watch started" line appears.
 
 import { loadConfig } from "../config.js"
-import { startWatcher, stopWatcher } from "../watcher.js"
-import { toStructuredEmail } from "../process.js"
-import { parseReply, extractToken, isReply } from "../reply-parse.js"
+import { startWatcher, stopWatcher } from "../core/watcher.js"
+import { toStructuredEmail } from "../core/process.js"
+import { parseReply, extractToken, isReply } from "../core/reply-parse.js"
 import { simpleParser } from "mailparser"
 
 const config = loadConfig()

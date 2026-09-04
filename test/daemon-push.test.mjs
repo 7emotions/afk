@@ -16,8 +16,8 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { createRegistry } from "../registry.js"
-import { createPendingStore } from "../pending-store.js"
+import { createRegistry } from "../store/registry.js"
+import { createPendingStore } from "../store/pending-store.js"
 import { createHttpServer } from "../daemon.js"
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))

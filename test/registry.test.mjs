@@ -10,7 +10,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { createRegistry, REGISTRY_TTL_MS } from "../registry.js"
+import { createRegistry, REGISTRY_TTL_MS } from "../store/registry.js"
 
 test("register reserves a session → alreadyPending false, then true on repeat", () => {
   const reg = createRegistry()

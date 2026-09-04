@@ -35,8 +35,8 @@ process.env.EMAIL_WAKE_JOURNAL = join(tmp, "journal.json")
 process.env.EMAIL_WAKE_LAST_UID = join(tmp, "last-uid.json")
 
 const { loadConfig } = await import("../config.js")
-const { startWatcher, stopWatcher, isWatcherHealthy } = await import("../watcher.js")
-const { scanAndProcess } = await import("../process.js")
+const { startWatcher, stopWatcher, isWatcherHealthy } = await import("../core/watcher.js")
+const { scanAndProcess } = await import("../core/process.js")
 
 const config = loadConfig()
 const recipient = config.recipient || config.smtp.user

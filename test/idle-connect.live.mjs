@@ -5,7 +5,7 @@
 // 3. Failure: wrong password -> clear error, no crash, isWatcherHealthy() stays false.
 
 import { loadConfig } from "../config.js"
-import { startWatcher, stopWatcher, isWatcherHealthy } from "../watcher.js"
+import { startWatcher, stopWatcher, isWatcherHealthy } from "../core/watcher.js"
 import nodemailer from "nodemailer"
 
 const config = loadConfig()

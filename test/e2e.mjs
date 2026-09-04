@@ -57,7 +57,7 @@ const JOURNAL = join(tmpdir(), `email-wake-e2e-journal-${process.pid}.json`)
 process.env.EMAIL_WAKE_JOURNAL = JOURNAL
 process.env.EMAIL_WAKE_LAST_UID = join(tmpdir(), `email-wake-e2e-cursor-${process.pid}.json`)
 const { loadConfig } = await import("../config.js")
-const { scanAndProcess } = await import("../process.js")
+const { scanAndProcess } = await import("../core/process.js")
 
 // Tracked resources for cleanup.
 let serveChild = null

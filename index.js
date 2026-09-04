@@ -25,7 +25,7 @@ import { setTimeout as sleep } from "node:timers/promises"
 
 import { tool } from "@opencode-ai/plugin"
 import { createRequestDecisionTool } from "./request-decision.js"
-import { startSubscription } from "./subscribe.js"
+import { startSubscription } from "./core/subscribe.js"
 import { loadConfig } from "./config.js"
 import { loadMessages } from "./messages.js"
 

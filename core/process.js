@@ -34,7 +34,7 @@
 import { simpleParser } from "mailparser"
 import { parseReply } from "./reply-parse.js"
 import { injectReply, isJournaled } from "./inject.js"
-import { getCursor, initCursor, advanceCursor } from "./uid-cursor.js"
+import { getCursor, initCursor, advanceCursor } from "../store/uid-cursor.js"
 
 // Default cursor ops (real file-backed uid-cursor.js). Tests inject an in-memory
 // fake via `deps.cursor` to avoid file I/O and cross-test state.

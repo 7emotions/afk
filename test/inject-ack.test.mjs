@@ -22,7 +22,7 @@ const {
   injectReply,
   markSeenAndJournal,
   isJournaled,
-} = await import("../inject.js")
+} = await import("../core/inject.js")
 
 after(() => {
   rmSync(tmp, { recursive: true, force: true })

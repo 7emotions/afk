@@ -17,7 +17,7 @@ after(() => {
   rmSync(tmp, { recursive: true, force: true })
 })
 
-const { createPendingStore, CLAIM_TTL_MS } = await import("../pending-store.js")
+const { createPendingStore, CLAIM_TTL_MS } = await import("../store/pending-store.js")
 
 // A fresh store on a unique path (per-test isolation without cross-talk).
 function makeStore(opts = {}) {

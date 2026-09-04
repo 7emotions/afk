@@ -23,9 +23,9 @@ const {
   processMail,
   scanAndProcess,
   toStructuredEmail,
-} = await import("../process.js")
-const { markSeenAndJournal, isJournaled } = await import("../inject.js")
-const { createPendingStore } = await import("../pending-store.js")
+} = await import("../core/process.js")
+const { markSeenAndJournal, isJournaled } = await import("../core/inject.js")
+const { createPendingStore } = await import("../store/pending-store.js")
 
 after(() => {
   rmSync(tmp, { recursive: true, force: true })

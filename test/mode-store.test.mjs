@@ -24,7 +24,7 @@ after(() => {
 // a throwaway temp file, never the real <plugin>/mode.json.
 process.env.EMAIL_WAKE_MODE = join(tmp, "env-mode.json")
 
-const { createModeStore, DEFAULT_MODE } = await import("../mode-store.js")
+const { createModeStore, DEFAULT_MODE } = await import("../store/mode-store.js")
 
 // A fresh store on a unique path (per-test isolation without cross-talk).
 function makeStore(opts = {}) {

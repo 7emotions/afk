@@ -13,7 +13,7 @@ import {
   isReply,
   extractBody,
   parseReply,
-} from "../reply-parse.js"
+} from "../core/reply-parse.js"
 
 // ---------------------------------------------------------------------------
 // extractToken

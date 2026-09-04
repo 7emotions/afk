@@ -18,8 +18,8 @@
 import { ImapFlow } from "imapflow"
 import { simpleParser } from "mailparser"
 import { loadConfig } from "../config.js"
-import { toStructuredEmail } from "../process.js"
-import { parseReply } from "../reply-parse.js"
+import { toStructuredEmail } from "../core/process.js"
+import { parseReply } from "../core/reply-parse.js"
 
 const config = loadConfig()
 const explicitUid = process.argv[2] ? Number(process.argv[2]) : null

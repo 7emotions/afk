@@ -10,8 +10,8 @@
 import { test, before, after } from "node:test"
 import assert from "node:assert/strict"
 
-import { createRegistry } from "../registry.js"
-import { createPendingStore } from "../pending-store.js"
+import { createRegistry } from "../store/registry.js"
+import { createPendingStore } from "../store/pending-store.js"
 import { createHttpServer } from "../daemon.js"
 
 let server

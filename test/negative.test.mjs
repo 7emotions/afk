@@ -26,7 +26,7 @@ import { join } from "node:path"
 const tmp = mkdtempSync(join(tmpdir(), "email-wake-negative-"))
 process.env.EMAIL_WAKE_JOURNAL = join(tmp, "journal.json")
 
-const { processMail } = await import("../process.js")
+const { processMail } = await import("../core/process.js")
 
 after(() => {
   rmSync(tmp, { recursive: true, force: true })

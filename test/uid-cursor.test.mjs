@@ -25,8 +25,8 @@ import { join } from "node:path"
 const tmp = mkdtempSync(join(tmpdir(), "email-wake-uidcursor-"))
 process.env.EMAIL_WAKE_LAST_UID = join(tmp, "last-uid.json")
 
-const { getCursor, initCursor, advanceCursor, resetCursor } = await import("../uid-cursor.js")
-const { scanAndProcess } = await import("../process.js")
+const { getCursor, initCursor, advanceCursor, resetCursor } = await import("../store/uid-cursor.js")
+const { scanAndProcess } = await import("../core/process.js")
 
 after(() => {
   rmSync(tmp, { recursive: true, force: true })

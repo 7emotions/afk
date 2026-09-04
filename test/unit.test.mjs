@@ -19,8 +19,8 @@ import assert from "node:assert/strict"
 import { simpleParser } from "mailparser"
 
 import { createRequestDecisionTool } from "../request-decision.js"
-import { extractToken, parseReply } from "../reply-parse.js"
-import { toStructuredEmail } from "../process.js"
+import { extractToken, parseReply } from "../core/reply-parse.js"
+import { toStructuredEmail } from "../core/process.js"
 
 // ---------------------------------------------------------------------------
 // 1. Subject-token round-trip (request_decision stamp ↔ reply-parse extract)

@@ -32,12 +32,12 @@ import http from "node:http"
 import { pathToFileURL } from "node:url"
 
 import { loadConfig } from "./config.js"
-import { startWatcher, stopWatcher, getWatcherClient } from "./watcher.js"
-import { scanAndProcess } from "./process.js"
-import { createRegistry } from "./registry.js"
-import { createPendingStore } from "./pending-store.js"
-import { createModeStore } from "./mode-store.js"
-import { markSeenAndJournal } from "./inject.js"
+import { startWatcher, stopWatcher, getWatcherClient } from "./core/watcher.js"
+import { scanAndProcess } from "./core/process.js"
+import { createRegistry } from "./store/registry.js"
+import { createPendingStore } from "./store/pending-store.js"
+import { createModeStore } from "./store/mode-store.js"
+import { markSeenAndJournal } from "./core/inject.js"
 
 const DEFAULT_PORT = 4100
 const DEFAULT_HOST = "127.0.0.1"
