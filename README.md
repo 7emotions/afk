@@ -38,7 +38,7 @@
 将以下内容粘贴给任意编码智能体，让它照着在你的 opencode 环境中完成安装：
 
 ```text
-Install and configure email-wake by following the instructions here:
+Install and configure the afk plugin by following the instructions here:
 https://raw.githubusercontent.com/7emotions/afk/main/INSTALLATION.md
 ```
 

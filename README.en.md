@@ -41,7 +41,7 @@ contract and the "pause after asking" rule).
 Paste this into any coding agent to have it install the plugin in your opencode environment:
 
 ```text
-Install and configure email-wake by following the instructions here:
+Install and configure the afk plugin by following the instructions here:
 https://raw.githubusercontent.com/7emotions/afk/main/INSTALLATION.md
 ```
 
