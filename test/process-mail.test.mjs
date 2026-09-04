@@ -327,3 +327,22 @@ test("scanAndProcess: processes each UID in the window and advances the cursor p
   assert.ok(!readJournal().includes("5001"), "processMail must not journal UID 5001")
   assert.ok(!readJournal().includes("5002"), "processMail must not journal UID 5002")
 })
+
+test("processMail: sender in allowList → persists the reply", async () => {
+  const { imapClient, client } = makeMocks()
+  const res = await processMail(imapClient, client, { folder: "INBOX", allowList: ["human@example.com"] }, 6001, {
+    parse: async () => PARSED_REPLY,
+  })
+  assert.equal(res.ok, true)
+  assert.equal(res.stored, true, "sender human@example.com is allowed")
+})
+
+test("processMail: sender NOT in allowList → skipped (prompt-injection guard)", async () => {
+  const { imapClient, client } = makeMocks()
+  const res = await processMail(imapClient, client, { folder: "INBOX", allowList: ["attacker@evil.com"] }, 6002, {
+    parse: async () => PARSED_REPLY,
+  })
+  assert.equal(res.ok, true)
+  assert.equal(res.skipped, true, "reply from human@example.com must be rejected when not allowed")
+  assert.equal(res.reason, "sender-not-allowed")
+})

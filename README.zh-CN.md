@@ -149,9 +149,15 @@ OpenCode 会从全局命令目录 `~/.config/opencode/command(s)/<name>.md`（�
 | `smtp.host` / `smtp.port` / `smtp.secure` | 用于发送决策邮件的 SMTP 服务器（默认 `smtp.qq.com:465`） |
 | `smtp.user` / `smtp.password` | SMTP 凭据 |
 | `recipient` | 决策邮件的收件人；默认取 `smtp.user` |
+| `allowList` | 允许注入其回复的发件人地址 —— prompt 注入防护。默认 `[smtp.user]`（仅你自己的邮箱） |
 | `folder` | 要监听的邮箱文件夹（默认 `INBOX`） |
 | `tuning` | 可选的运行行为/时序覆盖（见下文） |
 | `messages` | 可选的用户/智能体可见文案本地化（见下文） |
+
+### 安全
+
+- **发件人白名单** — `request_decision` 将问题邮件发送给 `recipient`；只有来自 `allowList`（默认：你自己的 `smtp.user`）地址的回复才会被注入会话。即使陌生人复制了 `[omo:<sessionID>]` 主题令牌，也无法注入内容 —— 除非其地址在白名单中，否则回复会被忽略。如需添加其他地址（例如第二个个人邮箱），请列出它们：`"allowList": ["me@qq.com", "me@outlook.com"]`。
+- **数据而非指令** — 每条注入的回复都被标注为*数据*，绝不是可执行的指令（prompt 注入防护）。
 
 ### `tuning`（可选，当前所列各值即默认值）
 

@@ -178,9 +178,22 @@ shape example (it contains no real secrets).
 | `smtp.host` / `smtp.port` / `smtp.secure` | SMTP server for sending decision emails (default `smtp.qq.com:465`) |
 | `smtp.user` / `smtp.password` | SMTP credentials |
 | `recipient` | Where decision emails are sent; defaults to `smtp.user` |
+| `allowList` | Sender addresses whose replies may be injected — the prompt-injection guard. Default `[smtp.user]` (only your own mailbox) |
 | `folder` | Mailbox folder to watch (default `INBOX`) |
 | `tuning` | Optional behavior/timing overrides (see below) |
 | `messages` | Optional localization of user/agent-facing strings (see below) |
+
+### Security
+
+- **Sender allow list** — `request_decision` emails the question to `recipient`;
+  only replies **from** addresses in `allowList` (default: your own `smtp.user`)
+  are ever injected into a session. A stranger who copies the
+  `[omo:<sessionID>]` subject token still cannot push content in — their reply
+  is ignored unless their address is allow-listed. Add extra addresses
+  (e.g. a second personal mailbox) by listing them:
+  `"allowList": ["me@qq.com", "me@outlook.com"]`.
+- **Data-not-instruction** — every injected reply is framed as *data*, never an
+  instruction to execute (prompt-injection guard).
 
 ### `tuning` (optional — current values are the defaults)
 

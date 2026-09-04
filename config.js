@@ -128,6 +128,13 @@ export function loadConfig(options = {}) {
   const folder = raw.folder ?? DEFAULTS.folder
   const tuning = { ...DEFAULTS.tuning, ...(raw.tuning ?? {}) }
 
+  // Sender allow list: only replies FROM these addresses may be injected (the
+  // prompt-injection guard). Default = the plugin's own mailbox (smtp.user) —
+  // the human replies from their own account. Lowercased for exact matching.
+  const allowList = Array.isArray(raw.allowList) && raw.allowList.length > 0
+    ? raw.allowList.map((a) => String(a).toLowerCase())
+    : [overrides.smtp.user.toLowerCase()]
+
   validate(overrides.imap)
 
   const config = {
@@ -136,6 +143,7 @@ export function loadConfig(options = {}) {
     recipient,
     folder,
     tuning,
+    allowList,
   }
   config.toJSON = () => redact(config)
   return config

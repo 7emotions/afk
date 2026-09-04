@@ -151,6 +151,16 @@ export async function processMail(imapClient, client, config, uid, deps = {}) {
     return { uid, ok: true, skipped: true }
   }
 
+  // Sender allow-list guard (prompt-injection protection): only replies FROM a
+  // configured address may be injected. A stranger who copies the subject token
+  // cannot push content into the session. Allow list is lowercased in config.
+  const sender = String(reply.from || "").toLowerCase()
+  const allowList = Array.isArray(config.allowList) ? config.allowList : []
+  if (allowList.length > 0 && !allowList.includes(sender)) {
+    debugFn(`uid ${id}: sender ${sender} not in allowList — ignoring`)
+    return { uid, ok: true, skipped: true, reason: "sender-not-allowed" }
+  }
+
   // Persist (daemon: durable pending-store + SSE broadcast; plugin: in-process
   // inject). `uid` is passed so the daemon's store can key the pending entry —
   // inject.js's default injectReply ignores it. NO \Seen, NO journal here.

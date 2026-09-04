@@ -16,6 +16,8 @@
   "recipient": "your-qq-email@qq.com",
   "folder": "INBOX",
 
+  "allowList": ["your-qq-email@qq.com"],
+
   "tuning": {
     "claimTtlMs": 60000,
     "reconnectBaseMs": 1000,

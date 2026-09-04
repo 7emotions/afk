@@ -52,9 +52,14 @@ Edit `~/.config/opencode/plugins/email-wake/config.json` and fill in:
 | `smtp.host` / `smtp.port` / `smtp.secure` | SMTP server for sending decision emails (default `smtp.qq.com:465`) |
 | `smtp.user` / `smtp.password` | SMTP credentials |
 | `recipient` | Where decision emails are sent (defaults to `smtp.user`) |
+| `allowList` | Sender addresses whose replies may be injected — the prompt-injection guard. Default `[smtp.user]` (only your own mailbox) |
 | `folder` | Mailbox folder to watch (default `INBOX`) |
 
 `config.json` is gitignored — never commit real credentials.
+
+**Security note:** only replies FROM addresses in `allowList` are ever injected
+into a session. The default is your own mailbox; add any extra personal
+addresses you may reply from (e.g. `"allowList": ["me@qq.com", "me@outlook.com"]`).
 
 ## 5. Reload and use
 
