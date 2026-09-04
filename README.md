@@ -55,7 +55,7 @@ https://raw.githubusercontent.com/7emotions/afk/main/INSTALLATION.md
 
 ```bash
 git clone https://github.com/7emotions/afk
-cd email-wake
+cd afk
 node install.js
 # then edit ~/.config/opencode/plugins/email-wake/config.json and fill credentials
 ```

@@ -11,7 +11,7 @@ Download the latest release and extract it into the OpenCode plugins directory:
 mkdir -p ~/.config/opencode/plugins
 curl -L https://github.com/7emotions/afk/archive/refs/tags/v0.1.0.tar.gz \
   | tar xz -C ~/.config/opencode/plugins/
-mv ~/.config/opencode/plugins/email-wake-0.1.0 ~/.config/opencode/plugins/email-wake
+mv ~/.config/opencode/plugins/afk-0.1.0 ~/.config/opencode/plugins/email-wake
 ```
 
 Verify `index.js` sits directly inside the plugin directory:
