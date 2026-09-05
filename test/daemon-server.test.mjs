@@ -1,4 +1,4 @@
-// email-wake daemon HTTP server unit test.
+// afk daemon HTTP server unit test.
 //
 // Exercises the daemon's HTTP surface (createHttpServer) against a real in-
 // process registry + pending-store on an ephemeral port: GET /health,
@@ -17,7 +17,7 @@ import { createHttpServer } from "../daemon.js"
 let server
 let baseUrl
 const registry = createRegistry()
-const pendingStore = createPendingStore({ path: "/tmp/email-wake-daemon-server-pending.json" })
+const pendingStore = createPendingStore({ path: "/tmp/afk-daemon-server-pending.json" })
 
 before(async () => {
   const built = createHttpServer(registry, pendingStore)

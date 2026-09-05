@@ -1,4 +1,4 @@
-# email-wake — agent-facing instruction
+# afk — agent-facing instruction
 
 This plugin adds a `request_decision` tool. When you need a human decision, call
 `request_decision(subject, question, { context, options, recommendation })`. If

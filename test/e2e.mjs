@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// email-wake E2E verification (T10).
+// afk E2E verification (T10).
 //
 // Proves the FULL chain on a real opencode server + real QQ mailbox:
 //   outbound email (routing token)  ->  "Re:" reply delivered by SMTP
@@ -9,12 +9,12 @@
 //
 // Run:  node test/e2e.mjs
 //
-// Design notes (see /home/lorenzo/.omo/notepads/email-wake/learnings.md):
-//   - `opencode serve --pure` is used so the email-wake plugin's OWN IMAP
+// Design notes (see /home/lorenzo/.omo/notepads/afk/learnings.md):
+//   - `opencode serve --pure` is used so the afk plugin's OWN IMAP
 //     watcher does NOT auto-load and race our manual scanAndProcess (the E2E
 //     exercises the pipeline explicitly). `--pure` skips only external plugins,
 //     NOT the config → the deepseek provider stays available (no XDG isolation).
-//   - The journal is isolated via EMAIL_WAKE_JOURNAL so the real journal.json
+//   - The journal is isolated via AFK_JOURNAL so the real journal.json
 //     is never polluted.
 //   - QQ IMAP SUBJECT search is eventually-consistent → bounded retry loop.
 
@@ -32,9 +32,9 @@ import { appendFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
 const HERE = dirname(fileURLToPath(import.meta.url))
 const PLUGIN_DIR = join(HERE, "..")
 const OPENDCODE_BIN = "/home/lorenzo/.opencode/bin/opencode"
-const EVIDENCE = "/home/lorenzo/.omo/evidence/task-10-email-wake.log"
+const EVIDENCE = "/home/lorenzo/.omo/evidence/task-10-afk.log"
 const MODEL = { providerID: "deepseek", modelID: "deepseek-v4-pro" }
-const SESSION_TITLE = "email-wake e2e throwaway"
+const SESSION_TITLE = "afk e2e throwaway"
 const FIRST_PROMPT = "Reply with exactly READY"
 const OUTBOUND_SUBJECT_PART = "e2e decision"
 const OUTBOUND_BODY = "the e2e question"
@@ -52,10 +52,10 @@ function log(...args) {
 }
 
 // Isolate the journal AND the UID cursor BEFORE importing inject.js / process.js
-// (which read EMAIL_WAKE_JOURNAL / EMAIL_WAKE_LAST_UID at module load time).
-const JOURNAL = join(tmpdir(), `email-wake-e2e-journal-${process.pid}.json`)
-process.env.EMAIL_WAKE_JOURNAL = JOURNAL
-process.env.EMAIL_WAKE_LAST_UID = join(tmpdir(), `email-wake-e2e-cursor-${process.pid}.json`)
+// (which read AFK_JOURNAL / AFK_LAST_UID at module load time).
+const JOURNAL = join(tmpdir(), `afk-e2e-journal-${process.pid}.json`)
+process.env.AFK_JOURNAL = JOURNAL
+process.env.AFK_LAST_UID = join(tmpdir(), `afk-e2e-cursor-${process.pid}.json`)
 const { loadConfig } = await import("../config.js")
 const { scanAndProcess } = await import("../core/process.js")
 
@@ -187,7 +187,7 @@ async function waitForReady(client) {
 // ---------------------------------------------------------------------------
 async function run() {
   log("=".repeat(66))
-  log(`EMAIL-WAKE E2E (T10) — start ${new Date().toISOString()}`)
+  log(`AFK E2E (T10) — start ${new Date().toISOString()}`)
   log("=".repeat(66))
 
   // [1] start serve, capture base URL

@@ -1,4 +1,4 @@
-// email-wake pending-store — durable pending deliveries (daemon-side).
+// afk pending-store — durable pending deliveries (daemon-side).
 //
 // The durable half of the P0 fix. After the daemon parses a reply it does NOT
 // mark \Seen and does NOT inject (cross-process HTTP injection is silently
@@ -29,11 +29,11 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
 
-// Pending path: <plugin dir>/pending.json by default. EMAIL_WAKE_PENDING
-// overrides it (mirrors the EMAIL_WAKE_JOURNAL / EMAIL_WAKE_LAST_UID convention;
+// Pending path: <plugin dir>/pending.json by default. AFK_PENDING
+// overrides it (mirrors the AFK_JOURNAL / AFK_LAST_UID convention;
 // tests use it to keep the real file clean).
 const PENDING_PATH =
-  process.env.EMAIL_WAKE_PENDING ||
+  process.env.AFK_PENDING ||
   join(dirname(fileURLToPath(import.meta.url)), "pending.json")
 
 // How long a claim stays authoritative before another instance may steal it.

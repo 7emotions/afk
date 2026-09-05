@@ -1,4 +1,4 @@
-// email-wake mode-store — durable GLOBAL email-mode gate (daemon-side).
+// afk mode-store — durable GLOBAL email-mode gate (daemon-side).
 //
 // A single `{ mode: "on"|"off" }` flag that decides whether request_decision
 // may email the human. "on" means the human has left the screen (/afk) and
@@ -13,17 +13,17 @@
 // set. Missing/corrupt/mis-shaped → the default "off" (safe: never email until
 // the human explicitly opts in via /afk).
 //
-// EMAIL_WAKE_MODE overrides the path (mirrors EMAIL_WAKE_JOURNAL /
-// EMAIL_WAKE_LAST_UID / EMAIL_WAKE_PENDING; tests use it to keep the real file
+// AFK_MODE overrides the path (mirrors AFK_JOURNAL /
+// AFK_LAST_UID / AFK_PENDING; tests use it to keep the real file
 // clean).
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
 
-// Mode path: <plugin dir>/mode.json by default. EMAIL_WAKE_MODE overrides it.
+// Mode path: <plugin dir>/mode.json by default. AFK_MODE overrides it.
 const MODE_PATH =
-  process.env.EMAIL_WAKE_MODE ||
+  process.env.AFK_MODE ||
   join(dirname(fileURLToPath(import.meta.url)), "mode.json")
 
 // The safe default: refuse to email until the human opts in.

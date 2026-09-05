@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // inject-test.mjs — standalone INJECTION unit test (spawns its own opencode serve).
 //
-// Proves the injection half of the email-wake hook against a REAL opencode
+// Proves the injection half of the afk hook against a REAL opencode
 // server, using the CORRECT SDK call shape that delivery-poller.js / inject.js
 // are missing:
 //
@@ -28,7 +28,7 @@ const OPENCODE_BIN = "/home/lorenzo/.opencode/bin/opencode"
 const MODEL = { providerID: "deepseek", modelID: "deepseek-v4-flash" }
 const TEXT =
   process.argv[2] ??
-  "🧪 [email-wake inject-test] 如果你能看到这条消息，说明正确调用形状的 client.session.prompt() 注入成功。请回复确认。"
+  "🧪 [afk inject-test] 如果你能看到这条消息，说明正确调用形状的 client.session.prompt() 注入成功。请回复确认。"
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 

@@ -1,4 +1,4 @@
-// email-wake T5 integration test (real QQ account).
+// afk T5 integration test (real QQ account).
 //
 // Verifies the end-to-end "new mail → fetch → parse → inject → ack" path
 // against a live imap.qq.com connection, exercising BOTH entry paths:
@@ -30,9 +30,9 @@ import { join } from "node:path"
 // Redirect the journal AND the UID cursor BEFORE importing watcher.js/process.js
 // (which transitively import inject.js / uid-cursor.js, whose paths are captured
 // at module load).
-const tmp = mkdtempSync(join(tmpdir(), "email-wake-catchup-"))
-process.env.EMAIL_WAKE_JOURNAL = join(tmp, "journal.json")
-process.env.EMAIL_WAKE_LAST_UID = join(tmp, "last-uid.json")
+const tmp = mkdtempSync(join(tmpdir(), "afk-catchup-"))
+process.env.AFK_JOURNAL = join(tmp, "journal.json")
+process.env.AFK_LAST_UID = join(tmp, "last-uid.json")
 
 const { loadConfig } = await import("../config.js")
 const { startWatcher, stopWatcher, isWatcherHealthy } = await import("../core/watcher.js")

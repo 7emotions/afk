@@ -1,4 +1,4 @@
-// email-wake UID cursor — detection state.
+// afk UID cursor — detection state.
 //
 // A persistent "highest processed UID" cursor. Detection no longer depends on
 // `\Seen` (the human's mail client may mark a reply \Seen BEFORE the daemon
@@ -16,17 +16,17 @@
 // uninitialized and re-anchored to the current max UID.
 //
 // No IMAP, no network — pure fs. Mirrors inject.js's journal convention
-// (EMAIL_WAKE_LAST_UID env override, in-memory cache, tolerant read).
+// (AFK_LAST_UID env override, in-memory cache, tolerant read).
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
 
-// Cursor path: <plugin dir>/last-uid.json by default. EMAIL_WAKE_LAST_UID
-// overrides it (mirrors the EMAIL_WAKE_JOURNAL convention; tests use it to keep
+// Cursor path: <plugin dir>/last-uid.json by default. AFK_LAST_UID
+// overrides it (mirrors the AFK_JOURNAL convention; tests use it to keep
 // the real cursor clean).
 const CURSOR_PATH =
-  process.env.EMAIL_WAKE_LAST_UID ||
+  process.env.AFK_LAST_UID ||
   join(dirname(fileURLToPath(import.meta.url)), "last-uid.json")
 
 // In-memory cache. null = "not loaded yet" (or no persisted value).

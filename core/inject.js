@@ -1,4 +1,4 @@
-// email-wake injection + ack dedupe (T7).
+// afk injection + ack dedupe (T7).
 //
 // Two jobs, split across the ack-ordering boundary:
 //   1. injectReply — wrap a parsed reply as DATA-NOT-INSTRUCTION and push it
@@ -15,11 +15,11 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
 
-// Journal path: <plugin dir>/journal.json by default. EMAIL_WAKE_JOURNAL
-// overrides it (mirrors the EMAIL_WAKE_* config override convention; the unit
+// Journal path: <plugin dir>/journal.json by default. AFK_JOURNAL
+// overrides it (mirrors the AFK_* config override convention; the unit
 // test uses it to keep the real journal clean).
 const JOURNAL_PATH =
-  process.env.EMAIL_WAKE_JOURNAL ||
+  process.env.AFK_JOURNAL ||
   join(dirname(fileURLToPath(import.meta.url)), "journal.json")
 
 // In-memory cache of the journal array. null = "not loaded yet".

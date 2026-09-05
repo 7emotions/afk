@@ -1,4 +1,4 @@
-// email-wake daemon registry.
+// afk daemon registry.
 //
 // The single-watcher daemon is the ONE decision-maker for a shared mailbox. This
 // module is its in-memory guard for the single-outstanding-decision rule: it

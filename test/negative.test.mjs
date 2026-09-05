@@ -1,4 +1,4 @@
-// email-wake negative-path unit tests (T11).
+// afk negative-path unit tests (T11).
 //
 // Dedicated negative cases for the two failure modes that MUST leave the source
 // message untouched (so it is retried on a later scan):
@@ -23,8 +23,8 @@ import { join } from "node:path"
 // Redirect the journal to a throwaway temp file BEFORE importing process.js so
 // the real <plugin>/journal.json is never touched (same pattern as inject-ack
 // and process-mail tests).
-const tmp = mkdtempSync(join(tmpdir(), "email-wake-negative-"))
-process.env.EMAIL_WAKE_JOURNAL = join(tmp, "journal.json")
+const tmp = mkdtempSync(join(tmpdir(), "afk-negative-"))
+process.env.AFK_JOURNAL = join(tmp, "journal.json")
 
 const { processMail } = await import("../core/process.js")
 
@@ -37,7 +37,7 @@ after(() => {
 // (mirrors inject.js's own readJournal semantics).
 function readJournal() {
   try {
-    return JSON.parse(readFileSync(process.env.EMAIL_WAKE_JOURNAL, "utf8"))
+    return JSON.parse(readFileSync(process.env.AFK_JOURNAL, "utf8"))
   } catch {
     return []
   }

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // watch-reply.live.mjs — live reply detector using the REAL hook watcher (IMAP IDLE).
 //
-// Uses watcher.js's startWatcher() — the EXACT code the email-wake daemon uses
+// Uses watcher.js's startWatcher() — the EXACT code the afk daemon uses
 // to detect new mail (imap.qq.com, IDLE push, auto-reconnect). NO polling.
 //
 // On every IDLE push (and catch-up scan after connect/reconnect) it scans the

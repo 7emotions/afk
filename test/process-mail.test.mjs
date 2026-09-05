@@ -1,4 +1,4 @@
-// email-wake T5 unit tests — processing pipeline (process.js).
+// afk T5 unit tests — processing pipeline (process.js).
 //
 // Covers: fetch→parse→persist ordering (NO ack in processMail — the P0 fix),
 // journaled-UID skip, {ok:false} persistence leaving the message UNSEEN, the
@@ -16,8 +16,8 @@ import { join } from "node:path"
 
 // Redirect the journal to a throwaway temp file BEFORE importing process.js so
 // the real <plugin>/journal.json is never touched (same pattern as inject-ack).
-const tmp = mkdtempSync(join(tmpdir(), "email-wake-process-"))
-process.env.EMAIL_WAKE_JOURNAL = join(tmp, "journal.json")
+const tmp = mkdtempSync(join(tmpdir(), "afk-process-"))
+process.env.AFK_JOURNAL = join(tmp, "journal.json")
 
 const {
   processMail,
@@ -33,7 +33,7 @@ after(() => {
 
 function readJournal() {
   try {
-    return JSON.parse(readFileSync(process.env.EMAIL_WAKE_JOURNAL, "utf8"))
+    return JSON.parse(readFileSync(process.env.AFK_JOURNAL, "utf8"))
   } catch {
     return []
   }

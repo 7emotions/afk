@@ -1,4 +1,4 @@
-// email-wake user/agent-facing messages (i18n).
+// afk user/agent-facing messages (i18n).
 //
 // Every string the plugin shows to the human (the decision email) or returns to
 // the agent (tool return strings) lives here, keyed by semantic name. Defaults

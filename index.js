@@ -1,4 +1,4 @@
-// email-wake plugin — THIN CLIENT (single-watcher daemon, PUSH architecture).
+// afk plugin — THIN CLIENT (single-watcher daemon, PUSH architecture).
 //
 // The plugin no longer holds an IMAP watcher and no longer polls for replies.
 // Instead it ensures ONE shared daemon (daemon.js) is running on this machine,
@@ -9,7 +9,7 @@
 //
 //   server(input):
 //     1. resolve the daemon base URL (default http://127.0.0.1:4100, override
-//        EMAIL_WAKE_DAEMON_URL / EMAIL_WAKE_DAEMON_PORT).
+//        AFK_DAEMON_URL / AFK_DAEMON_PORT).
 //     2. probe GET /health; if unreachable, spawn a detached daemon and poll
 //        /health until ready (bounded ~15s).
 //     3. start the SSE subscriber ONCE (fire-and-forget) — it reconnects with
@@ -45,14 +45,14 @@ let daemonUrl = null
 let subscriberStop = null
 
 function debugEnabled() {
-  return process.env.EMAIL_WAKE_DEBUG === "1" || process.env.EMAIL_WAKE_DEBUG === "true"
+  return process.env.AFK_DEBUG === "1" || process.env.AFK_DEBUG === "true"
 }
 
-// The daemon base URL: EMAIL_WAKE_DAEMON_URL wins; otherwise derive from
-// EMAIL_WAKE_DAEMON_PORT (so overriding the port also moves the probe target).
+// The daemon base URL: AFK_DAEMON_URL wins; otherwise derive from
+// AFK_DAEMON_PORT (so overriding the port also moves the probe target).
 function resolveDaemonUrl(env = process.env) {
-  if (env.EMAIL_WAKE_DAEMON_URL) return env.EMAIL_WAKE_DAEMON_URL
-  const port = env.EMAIL_WAKE_DAEMON_PORT || DEFAULT_DAEMON_PORT
+  if (env.AFK_DAEMON_URL) return env.AFK_DAEMON_URL
+  const port = env.AFK_DAEMON_PORT || DEFAULT_DAEMON_PORT
   return `http://127.0.0.1:${port}`
 }
 
@@ -124,7 +124,7 @@ const server = async (input, _options) => {
     .then((ok) => {
       if (!ok) {
         console.error(
-          "[email-wake] daemon unreachable after spawn; request_decision will not auto-register (plugin stays loaded)"
+          "[afk] daemon unreachable after spawn; request_decision will not auto-register (plugin stays loaded)"
         )
       }
     })
@@ -143,9 +143,9 @@ const server = async (input, _options) => {
       reconnectBaseMs: config?.tuning?.reconnectBaseMs,
       reconnectMaxMs: config?.tuning?.reconnectMaxMs,
       debug: (...args) => {
-        if (debugEnabled()) console.error("[email-wake:subscribe]", ...args)
+        if (debugEnabled()) console.error("[afk:subscribe]", ...args)
       },
-      error: (...args) => console.error("[email-wake:subscribe:error]", ...args),
+      error: (...args) => console.error("[afk:subscribe:error]", ...args),
     })
   }
   ensureSubscriber()
@@ -156,7 +156,7 @@ const server = async (input, _options) => {
   const registerDecision = async ({ sessionID }) => {
     if (!(await probeHealth(daemonUrl))) {
       if (!(await ensureDaemon(daemonUrl))) {
-        throw new Error("email-wake daemon unreachable")
+        throw new Error("afk daemon unreachable")
       }
     }
     const res = await fetch(`${daemonUrl}/register`, {
@@ -214,7 +214,7 @@ const server = async (input, _options) => {
     async execute(args, _toolContext) {
       if (!(await probeHealth(daemonUrl))) {
         if (!(await ensureDaemon(daemonUrl))) {
-          throw new Error("email-wake daemon unreachable")
+          throw new Error("afk daemon unreachable")
         }
       }
       const res = await fetch(`${daemonUrl}/mode`, {
@@ -244,4 +244,4 @@ const server = async (input, _options) => {
 
 export { resolveDaemonUrl, probeHealth, spawnDaemon, ensureDaemon }
 
-export default { id: "email-wake", server }
+export default { id: "afk", server }

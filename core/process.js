@@ -1,4 +1,4 @@
-// email-wake message processing pipeline (T5).
+// afk message processing pipeline (T5).
 //
 // fetch → parse → PERSIST. Ties together the already-built pieces:
 //   - reply-parse.js (T6) `parseReply`          — pure reply detection + routing
@@ -41,17 +41,17 @@ import { getCursor, initCursor, advanceCursor } from "../store/uid-cursor.js"
 const defaultCursorOps = { get: getCursor, init: initCursor, advance: advanceCursor }
 
 function debugEnabled() {
-  return process.env.EMAIL_WAKE_DEBUG === "1" || process.env.EMAIL_WAKE_DEBUG === "true"
+  return process.env.AFK_DEBUG === "1" || process.env.AFK_DEBUG === "true"
 }
 
 function debug(...args) {
   if (debugEnabled()) {
-    console.error("[email-wake:process]", ...args)
+    console.error("[afk:process]", ...args)
   }
 }
 
 function error(...args) {
-  console.error("[email-wake:process:error]", ...args)
+  console.error("[afk:process:error]", ...args)
 }
 
 /**

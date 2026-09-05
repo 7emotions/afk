@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// email-wake installer — one-shot, zero extra dependencies.
+// afk installer — one-shot, zero extra dependencies.
 //
 // Mirrors the spirit of oh-my-openagent's `install`: detect the opencode config
 // dir, copy the plugin into place, `npm install` deps, scaffold config.json,
@@ -16,7 +16,7 @@ import { execSync } from "node:child_process"
 const SRC = dirname(fileURLToPath(import.meta.url))
 const CONFIG_DIR = process.env.OPENCODE_CONFIG_DIR || join(homedir(), ".config", "opencode")
 const PLUGIN_DIR =
-  process.env.OPENCODE_PLUGIN_DIR || join(CONFIG_DIR, "plugins", "email-wake")
+  process.env.OPENCODE_PLUGIN_DIR || join(CONFIG_DIR, "plugins", "afk")
 const COMMAND_DIR = process.env.OPENCODE_COMMAND_DIR || join(CONFIG_DIR, "command")
 
 // Files that must never be copied into a fresh install (secrets / runtime state).
@@ -30,9 +30,9 @@ const EXCLUDED = new Set([
   "mode.json",
 ])
 
-const log = (msg) => console.log(`[email-wake] ${msg}`)
+const log = (msg) => console.log(`[afk] ${msg}`)
 const fail = (msg) => {
-  console.error(`[email-wake] ERROR: ${msg}`)
+  console.error(`[afk] ERROR: ${msg}`)
   process.exit(1)
 }
 

@@ -51,11 +51,11 @@ https://raw.githubusercontent.com/7emotions/afk/main/INSTALLATION.md
 git clone https://github.com/7emotions/afk
 cd afk
 node install.js
-# then edit ~/.config/opencode/plugins/email-wake/config.json and fill credentials
+# then edit ~/.config/opencode/plugins/afk/config.json and fill credentials
 ```
 
 The installer:
-1. copies the source into `~/.config/opencode/plugins/email-wake/` (skipping
+1. copies the source into `~/.config/opencode/plugins/afk/` (skipping
    `node_modules`, `.git`, and any secret/runtime files);
 2. runs `npm install --omit=dev`;
 3. creates `config.json` from `config.example.json` (never overwrites an
@@ -72,7 +72,7 @@ Then edit `config.json` (gitignored) and fill `imap.user` / `imap.password` /
 
 Equivalent steps, no installer:
 
-1. Copy this directory into `~/.config/opencode/plugins/email-wake/`.
+1. Copy this directory into `~/.config/opencode/plugins/afk/`.
 2. `cd` into it and run `npm install`.
 3. Create `config.json` from `config.example.json` and fill credentials.
 4. Add the plugin path to the `plugin` array in `~/.config/opencode/opencode.jsonc`.
@@ -245,17 +245,17 @@ Every connection field is overridable via env vars (they take precedence over
 
 | Variable | Meaning |
 |----------|---------|
-| `EMAIL_WAKE_CONFIG` | Config file path (default `<plugin>/config.json`) |
-| `EMAIL_WAKE_IMAP_HOST` / `EMAIL_WAKE_IMAP_PORT` / `EMAIL_WAKE_IMAP_USER` / `EMAIL_WAKE_IMAP_PASSWORD` | IMAP override |
-| `EMAIL_WAKE_SMTP_HOST` / `EMAIL_WAKE_SMTP_PORT` / `EMAIL_WAKE_SMTP_USER` / `EMAIL_WAKE_SMTP_PASSWORD` | SMTP override |
-| `EMAIL_WAKE_RECIPIENT` | Recipient override |
-| `EMAIL_WAKE_JOURNAL` | Journal file path (processed-UID dedupe) |
-| `EMAIL_WAKE_LAST_UID` | UID-cursor file path (detection state) |
-| `EMAIL_WAKE_PENDING` | Pending-store file path (durable deliveries) |
-| `EMAIL_WAKE_MODE` | Mode-store file path (GLOBAL email mode, `mode.json`) |
-| `EMAIL_WAKE_DAEMON_URL` | Daemon base URL (default `http://127.0.0.1:4100`) |
-| `EMAIL_WAKE_DAEMON_HOST` / `EMAIL_WAKE_DAEMON_PORT` | Daemon bind host/port (default `127.0.0.1` / `4100`) |
-| `EMAIL_WAKE_DEBUG` | `1`/`true` to enable debug logging |
+| `AFK_CONFIG` | Config file path (default `<plugin>/config.json`) |
+| `AFK_IMAP_HOST` / `AFK_IMAP_PORT` / `AFK_IMAP_USER` / `AFK_IMAP_PASSWORD` | IMAP override |
+| `AFK_SMTP_HOST` / `AFK_SMTP_PORT` / `AFK_SMTP_USER` / `AFK_SMTP_PASSWORD` | SMTP override |
+| `AFK_RECIPIENT` | Recipient override |
+| `AFK_JOURNAL` | Journal file path (processed-UID dedupe) |
+| `AFK_LAST_UID` | UID-cursor file path (detection state) |
+| `AFK_PENDING` | Pending-store file path (durable deliveries) |
+| `AFK_MODE` | Mode-store file path (GLOBAL email mode, `mode.json`) |
+| `AFK_DAEMON_URL` | Daemon base URL (default `http://127.0.0.1:4100`) |
+| `AFK_DAEMON_HOST` / `AFK_DAEMON_PORT` | Daemon bind host/port (default `127.0.0.1` / `4100`) |
+| `AFK_DEBUG` | `1`/`true` to enable debug logging |
 
 Passwords are never logged (masked as `***` when the config is serialized).
 
@@ -294,7 +294,7 @@ flowchart TB
     D -. SSE push .-> B
 ```
 
-The daemon binds a fixed port (default `4100`, override `EMAIL_WAKE_DAEMON_PORT`).
+The daemon binds a fixed port (default `4100`, override `AFK_DAEMON_PORT`).
 Binding is the atomic single-instance lock: if two instances spawn a daemon
 simultaneously, only one wins the `bind`; the loser exits quietly
 (`EADDRINUSE`). A plugin that probes `/health` and gets no answer spawns a

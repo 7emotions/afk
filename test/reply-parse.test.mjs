@@ -1,4 +1,4 @@
-// email-wake T6 unit tests — reply detection + parsing (pure logic).
+// afk T6 unit tests — reply detection + parsing (pure logic).
 //
 // Covers: token extraction, reply-prefix detection (ASCII + Chinese locale),
 // self-sent-copy rejection, header-driven reply acceptance, multipart body

@@ -1,6 +1,6 @@
-# email-wake — Installation
+# afk — Installation
 
-Steps to install and configure the email-wake OpenCode plugin. Each step is
+Steps to install and configure the afk OpenCode plugin. Each step is
 self-contained; run them in order.
 
 ## 1. Download and extract
@@ -11,19 +11,19 @@ Download the latest release and extract it into the OpenCode plugins directory:
 mkdir -p ~/.config/opencode/plugins
 curl -L https://github.com/7emotions/afk/archive/refs/tags/v0.1.0.tar.gz \
   | tar xz -C ~/.config/opencode/plugins/
-mv ~/.config/opencode/plugins/afk-0.1.0 ~/.config/opencode/plugins/email-wake
+mv ~/.config/opencode/plugins/afk-0.1.0 ~/.config/opencode/plugins/afk
 ```
 
 Verify `index.js` sits directly inside the plugin directory:
 
 ```bash
-ls ~/.config/opencode/plugins/email-wake/index.js
+ls ~/.config/opencode/plugins/afk/index.js
 ```
 
 ## 2. Install dependencies
 
 ```bash
-cd ~/.config/opencode/plugins/email-wake
+cd ~/.config/opencode/plugins/afk
 npm install --omit=dev
 ```
 
@@ -43,7 +43,7 @@ into `~/.config/opencode/command/`.
 
 ## 4. Configure credentials
 
-Edit `~/.config/opencode/plugins/email-wake/config.json` and fill in:
+Edit `~/.config/opencode/plugins/afk/config.json` and fill in:
 
 | Field | Meaning |
 |-------|---------|

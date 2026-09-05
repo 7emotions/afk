@@ -1,4 +1,4 @@
-// email-wake single-watcher daemon (PUSH architecture).
+// afk single-watcher daemon (PUSH architecture).
 //
 // ONE process per machine owns the IMAP IDLE watcher for the shared mailbox.
 // Every opencode instance runs only the thin plugin client (index.js), which
@@ -44,15 +44,15 @@ const DEFAULT_HOST = "127.0.0.1"
 const MAX_BODY_BYTES = 1_000_000
 
 function debugEnabled() {
-  return process.env.EMAIL_WAKE_DEBUG === "1" || process.env.EMAIL_WAKE_DEBUG === "true"
+  return process.env.AFK_DEBUG === "1" || process.env.AFK_DEBUG === "true"
 }
 
 function debug(...args) {
-  if (debugEnabled()) console.error("[email-wake:daemon]", ...args)
+  if (debugEnabled()) console.error("[afk:daemon]", ...args)
 }
 
 function error(...args) {
-  console.error("[email-wake:daemon:error]", ...args)
+  console.error("[afk:daemon:error]", ...args)
 }
 
 // Read a JSON request body with a size cap. Rejects on oversized/malformed body.
@@ -327,8 +327,8 @@ function bindServer(server, host, port) {
  * and install signal handlers. Does not return until shutdown.
  */
 export async function startDaemon() {
-  const port = Number(process.env.EMAIL_WAKE_DAEMON_PORT || DEFAULT_PORT)
-  const host = process.env.EMAIL_WAKE_DAEMON_HOST || DEFAULT_HOST
+  const port = Number(process.env.AFK_DAEMON_PORT || DEFAULT_PORT)
+  const host = process.env.AFK_DAEMON_HOST || DEFAULT_HOST
 
   // Load config best-effort: a bad config must not take the daemon down (the
   // HTTP surface + pending-store still serve, the watcher just stays down).

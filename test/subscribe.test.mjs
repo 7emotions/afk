@@ -1,4 +1,4 @@
-// email-wake SSE subscriber unit tests.
+// afk SSE subscriber unit tests.
 //
 // Proves the plugin-side PUSH client contract against a fake daemon HTTP API,
 // a fake SSE stream, and a fake in-process SDK client:

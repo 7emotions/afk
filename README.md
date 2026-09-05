@@ -48,12 +48,12 @@ https://raw.githubusercontent.com/7emotions/afk/main/INSTALLATION.md
 git clone https://github.com/7emotions/afk
 cd afk
 node install.js
-# then edit ~/.config/opencode/plugins/email-wake/config.json and fill credentials
+# then edit ~/.config/opencode/plugins/afk/config.json and fill credentials
 ```
 
 安装器会执行以下操作：
 
-1. 将源码复制到 `~/.config/opencode/plugins/email-wake/`（跳过 `node_modules`、`.git` 以及所有密钥/运行时文件）；
+1. 将源码复制到 `~/.config/opencode/plugins/afk/`（跳过 `node_modules`、`.git` 以及所有密钥/运行时文件）；
 2. 运行 `npm install --omit=dev`；
 3. 由 `config.example.json` 生成 `config.json`（绝不覆盖已有的）；
 4. 在 `~/.config/opencode/opencode.jsonc` 中注册插件（采用保留注释的文本插入方式，绝不对 JSONC 文件执行 `JSON.parse`）；
@@ -65,7 +65,7 @@ node install.js
 
 与安装器等价的手动步骤：
 
-1. 将此目录复制到 `~/.config/opencode/plugins/email-wake/`。
+1. 将此目录复制到 `~/.config/opencode/plugins/afk/`。
 2. `cd` 进入该目录并运行 `npm install`。
 3. 由 `config.example.json` 创建 `config.json` 并填写凭据。
 4. 将插件路径添加到 `~/.config/opencode/opencode.jsonc` 中的 `plugin` 数组。
@@ -202,17 +202,17 @@ OpenCode 会从全局命令目录 `~/.config/opencode/command(s)/<name>.md`（�
 
 | 变量 | 含义 |
 |----------|---------|
-| `EMAIL_WAKE_CONFIG` | 配置文件路径（默认 `<plugin>/config.json`） |
-| `EMAIL_WAKE_IMAP_HOST` / `EMAIL_WAKE_IMAP_PORT` / `EMAIL_WAKE_IMAP_USER` / `EMAIL_WAKE_IMAP_PASSWORD` | IMAP 覆盖 |
-| `EMAIL_WAKE_SMTP_HOST` / `EMAIL_WAKE_SMTP_PORT` / `EMAIL_WAKE_SMTP_USER` / `EMAIL_WAKE_SMTP_PASSWORD` | SMTP 覆盖 |
-| `EMAIL_WAKE_RECIPIENT` | 收件人覆盖 |
-| `EMAIL_WAKE_JOURNAL` | journal 文件路径（已处理 UID 去重） |
-| `EMAIL_WAKE_LAST_UID` | UID 游标文件路径（检测状态） |
-| `EMAIL_WAKE_PENDING` | pending-store 文件路径（持久化投递） |
-| `EMAIL_WAKE_MODE` | 模式存储文件路径（GLOBAL 邮件模式，`mode.json`） |
-| `EMAIL_WAKE_DAEMON_URL` | 守护进程基础 URL（默认 `http://127.0.0.1:4100`） |
-| `EMAIL_WAKE_DAEMON_HOST` / `EMAIL_WAKE_DAEMON_PORT` | 守护进程绑定主机/端口（默认 `127.0.0.1` / `4100`） |
-| `EMAIL_WAKE_DEBUG` | 设为 `1`/`true` 以启用调试日志 |
+| `AFK_CONFIG` | 配置文件路径（默认 `<plugin>/config.json`） |
+| `AFK_IMAP_HOST` / `AFK_IMAP_PORT` / `AFK_IMAP_USER` / `AFK_IMAP_PASSWORD` | IMAP 覆盖 |
+| `AFK_SMTP_HOST` / `AFK_SMTP_PORT` / `AFK_SMTP_USER` / `AFK_SMTP_PASSWORD` | SMTP 覆盖 |
+| `AFK_RECIPIENT` | 收件人覆盖 |
+| `AFK_JOURNAL` | journal 文件路径（已处理 UID 去重） |
+| `AFK_LAST_UID` | UID 游标文件路径（检测状态） |
+| `AFK_PENDING` | pending-store 文件路径（持久化投递） |
+| `AFK_MODE` | 模式存储文件路径（GLOBAL 邮件模式，`mode.json`） |
+| `AFK_DAEMON_URL` | 守护进程基础 URL（默认 `http://127.0.0.1:4100`） |
+| `AFK_DAEMON_HOST` / `AFK_DAEMON_PORT` | 守护进程绑定主机/端口（默认 `127.0.0.1` / `4100`） |
+| `AFK_DEBUG` | 设为 `1`/`true` 以启用调试日志 |
 
 密码绝不会被记录（序列化配置时以 `***` 打码）。
 
@@ -246,7 +246,7 @@ flowchart TB
     D -. SSE push .-> B
 ```
 
-守护进程绑定固定端口（默认 `4100`，可用 `EMAIL_WAKE_DAEMON_PORT` 覆盖）。绑定即是原子的单实例锁：若两个实例同时启动守护进程，只有一个能赢得 `bind`，落败者会安静退出（`EADDRINUSE`）。插件探测 `/health` 无响应时，会启动一个分离的守护进程并轮询直至其健康就绪。
+守护进程绑定固定端口（默认 `4100`，可用 `AFK_DAEMON_PORT` 覆盖）。绑定即是原子的单实例锁：若两个实例同时启动守护进程，只有一个能赢得 `bind`，落败者会安静退出（`EADDRINUSE`）。插件探测 `/health` 无响应时，会启动一个分离的守护进程并轮询直至其健康就绪。
 
 ### 完整流程
 

@@ -1,4 +1,4 @@
-// email-wake PUSH endpoints unit tests.
+// afk PUSH endpoints unit tests.
 //
 // Exercises the daemon's SSE + claim/ack surface against a real in-process
 // registry + pending-store on an ephemeral port:
@@ -21,7 +21,7 @@ import { createPendingStore } from "../store/pending-store.js"
 import { createHttpServer } from "../daemon.js"
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
-const tmp = mkdtempSync(join(tmpdir(), "email-wake-push-"))
+const tmp = mkdtempSync(join(tmpdir(), "afk-push-"))
 
 let server
 let baseUrl

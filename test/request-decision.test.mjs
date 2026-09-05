@@ -1,4 +1,4 @@
-// email-wake request_decision unit test (T3 + daemon-registration flow).
+// afk request_decision unit test (T3 + daemon-registration flow).
 //
 // node:test + assert. Mocks the nodemailer transport (via the tool factory's
 // `createTransport` dependency) so NO real mail is sent, and mocks the daemon
@@ -51,14 +51,14 @@ function makeTool({
       sendMail: async (mail) => {
         calls.push({ opts, mail })
         if (transport === "throw") throw new Error("SMTP 550 mailbox unavailable")
-        return { messageId: `<mock-${calls.length}@email-wake.test>` }
+        return { messageId: `<mock-${calls.length}@afk.test>` }
       },
     }
     return transporter
   }
   const toolDef = createRequestDecisionTool({
     getClient: () => client,
-    getDirectory: () => "/tmp/email-wake-test",
+    getDirectory: () => "/tmp/afk-test",
     registerDecision: async (arg) => {
       registerCalls.push(arg)
       return registerDecision(arg)

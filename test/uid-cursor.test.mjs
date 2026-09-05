@@ -1,4 +1,4 @@
-// email-wake UID-cursor unit tests.
+// afk UID-cursor unit tests.
 //
 // Covers the new detection mechanism that replaces the UNSEEN+SUBJECT search:
 //
@@ -12,7 +12,7 @@
 //       message was skipped (self-copy / non-token mail must not wedge it).
 //
 // The real cursor file is redirected to a throwaway temp file via
-// EMAIL_WAKE_LAST_UID (mirrors the EMAIL_WAKE_JOURNAL pattern). scanAndProcess's
+// AFK_LAST_UID (mirrors the AFK_JOURNAL pattern). scanAndProcess's
 // integration tests inject an in-memory cursor fake (deps.cursor) for
 // determinism.
 
@@ -22,8 +22,8 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-const tmp = mkdtempSync(join(tmpdir(), "email-wake-uidcursor-"))
-process.env.EMAIL_WAKE_LAST_UID = join(tmp, "last-uid.json")
+const tmp = mkdtempSync(join(tmpdir(), "afk-uidcursor-"))
+process.env.AFK_LAST_UID = join(tmp, "last-uid.json")
 
 const { getCursor, initCursor, advanceCursor, resetCursor } = await import("../store/uid-cursor.js")
 const { scanAndProcess } = await import("../core/process.js")

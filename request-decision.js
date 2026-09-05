@@ -1,4 +1,4 @@
-// email-wake request_decision tool (T3 + daemon registration).
+// afk request_decision tool (T3 + daemon registration).
 //
 // Lets the agent email the human a decision question, stamping the subject with
 // a routing token `[omo:<rootSessionID>]` so a future reply can be matched back
@@ -33,7 +33,7 @@ async function resolveRootSessionID(client, startSessionID, directory) {
   let current = startSessionID
   for (;;) {
     if (visited.has(current)) {
-      throw new Error(`email-wake: session parent cycle while resolving ${startSessionID}`)
+      throw new Error(`afk: session parent cycle while resolving ${startSessionID}`)
     }
     visited.add(current)
 
@@ -44,7 +44,7 @@ async function resolveRootSessionID(client, startSessionID, directory) {
       ...(directory ? { query: { directory } } : {}),
     })
     if (response.error) throw new Error(String(response.error))
-    if (!response.data) throw new Error(`email-wake: no session data for ${current}`)
+    if (!response.data) throw new Error(`afk: no session data for ${current}`)
 
     if (!response.data.parentID) return current
     current = response.data.parentID
@@ -123,12 +123,12 @@ export function createRequestDecisionTool(deps = {}) {
     async execute(args, toolContext) {
       const client = getClient()
       if (!client) {
-        return "[ERROR] email-wake client not available; the plugin has not been initialized"
+        return "[ERROR] afk client not available; the plugin has not been initialized"
       }
 
       const currentSessionID = toolContext.sessionID
       if (!currentSessionID) {
-        return "[ERROR] email-wake: missing sessionID in tool context"
+        return "[ERROR] afk: missing sessionID in tool context"
       }
 
       const messages = getMessages()
@@ -181,7 +181,7 @@ export function createRequestDecisionTool(deps = {}) {
         } catch (err) {
           // Daemon down: log loudly, then still ask the human (degraded — the
           // reply may not auto-route until the daemon recovers). Never crash.
-          console.error("[email-wake] daemon register failed:", err.message)
+          console.error("[afk] daemon register failed:", err.message)
         }
       }
 

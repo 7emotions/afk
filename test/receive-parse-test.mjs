@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Standalone receive+parse test for the email-wake plugin.
+// Standalone receive+parse test for the afk plugin.
 //
 // Verifies the RECEIVE + PARSE half of the reply pipeline in isolation from the
 // (broken) injection path:

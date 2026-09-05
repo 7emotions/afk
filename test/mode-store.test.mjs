@@ -1,11 +1,11 @@
-// email-wake mode-store unit tests.
+// afk mode-store unit tests.
 //
 // The GLOBAL email-mode gate: a durable `{ mode: "on"|"off" }` flag in mode.json.
 // "off" means the human is at the screen and request_decision must refuse (the
 // agent falls back to the built-in question tool); "on" means the human has left
 // (/afk) and request_decision may email. Mirrors pending-store.js: a JSON file
 // (mode.json, gitignored), loaded on start, written synchronously on set, with
-// EMAIL_WAKE_MODE overriding the path (tests point it at a temp dir so the real
+// AFK_MODE overriding the path (tests point it at a temp dir so the real
 // <plugin>/mode.json is never touched).
 
 import { test, after } from "node:test"
@@ -14,7 +14,7 @@ import { mkdtempSync, rmSync, writeFileSync, existsSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-const tmp = mkdtempSync(join(tmpdir(), "email-wake-mode-"))
+const tmp = mkdtempSync(join(tmpdir(), "afk-mode-"))
 after(() => {
   rmSync(tmp, { recursive: true, force: true })
 })
@@ -22,7 +22,7 @@ after(() => {
 // Set the env override BEFORE importing mode-store.js (mirrors the journal
 // redirect pattern in negative.test.mjs) so the module's default path points at
 // a throwaway temp file, never the real <plugin>/mode.json.
-process.env.EMAIL_WAKE_MODE = join(tmp, "env-mode.json")
+process.env.AFK_MODE = join(tmp, "env-mode.json")
 
 const { createModeStore, DEFAULT_MODE } = await import("../store/mode-store.js")
 
@@ -72,10 +72,10 @@ test("set rejects a value that is not 'on'/'off'", () => {
   assert.equal(store.get(), "off", "a rejected set must not change the stored mode")
 })
 
-test("EMAIL_WAKE_MODE overrides the default path (set via createModeStore() writes there)", () => {
-  const envPath = process.env.EMAIL_WAKE_MODE
+test("AFK_MODE overrides the default path (set via createModeStore() writes there)", () => {
+  const envPath = process.env.AFK_MODE
   const store = createModeStore() // no explicit path → uses the env override
   store.set("on")
   assert.equal(store.get(), "on")
-  assert.ok(existsSync(envPath), "createModeStore() must persist to the EMAIL_WAKE_MODE path")
+  assert.ok(existsSync(envPath), "createModeStore() must persist to the AFK_MODE path")
 })

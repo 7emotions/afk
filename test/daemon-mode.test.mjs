@@ -1,4 +1,4 @@
-// email-wake daemon mode-gate HTTP surface unit tests.
+// afk daemon mode-gate HTTP surface unit tests.
 //
 // Exercises the GLOBAL email-mode endpoints (added to createHttpServer) against
 // a real in-process registry + pending-store + mode-store on an ephemeral port:
@@ -21,7 +21,7 @@ import { createModeStore } from "../store/mode-store.js"
 import { createHttpServer } from "../daemon.js"
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
-const tmp = mkdtempSync(join(tmpdir(), "email-wake-mode-http-"))
+const tmp = mkdtempSync(join(tmpdir(), "afk-mode-http-"))
 
 let server
 let baseUrl

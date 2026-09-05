@@ -1,4 +1,4 @@
-// email-wake IMAP IDLE watcher (T4).
+// afk IMAP IDLE watcher (T4).
 //
 // Persistent connection to the IMAP server (imap.qq.com) that selects the
 // configured folder, enters IDLE, and fires an `onMail` callback whenever the
@@ -40,21 +40,21 @@ let handle = null
 // `logger: false`, and config is never serialized here).
 //
 // `debug` is informational/normal-operation logging — silent unless the
-// EMAIL_WAKE_DEBUG env toggle is set. `error` is a real error and always
+// AFK_DEBUG env toggle is set. `error` is a real error and always
 // emits to stderr (red). This split stops startup noise (e.g. "connected to
 // imap.qq.com:993 … IDLE auto-starts") from looking like a failure.
 function debugEnabled() {
-  return process.env.EMAIL_WAKE_DEBUG === "1" || process.env.EMAIL_WAKE_DEBUG === "true"
+  return process.env.AFK_DEBUG === "1" || process.env.AFK_DEBUG === "true"
 }
 
 function debug(...args) {
   if (debugEnabled()) {
-    console.error("[email-wake:watcher]", ...args)
+    console.error("[afk:watcher]", ...args)
   }
 }
 
 function error(...args) {
-  console.error("[email-wake:watcher:error]", ...args)
+  console.error("[afk:watcher:error]", ...args)
 }
 
 // IMAP error summary from server status/text only — never raw command or credentials.
@@ -101,10 +101,10 @@ function createClient(config, tuning) {
  */
 export function startWatcher(config, { onMail, onReady, tuning } = {}) {
   if (!config?.imap?.host || !config?.imap?.user) {
-    return Promise.reject(new Error("email-wake: startWatcher requires a valid imap config"))
+    return Promise.reject(new Error("afk: startWatcher requires a valid imap config"))
   }
   if (typeof onMail !== "function") {
-    return Promise.reject(new Error("email-wake: startWatcher requires an onMail handler"))
+    return Promise.reject(new Error("afk: startWatcher requires an onMail handler"))
   }
   // One connection only. A second call while running returns the live handle.
   if (handle) {
@@ -182,7 +182,7 @@ export function startWatcher(config, { onMail, onReady, tuning } = {}) {
         }
       }
     } catch (err) {
-      const wrapped = new Error(`email-wake: IMAP connect/select failed: ${describeError(err)}`)
+      const wrapped = new Error(`afk: IMAP connect/select failed: ${describeError(err)}`)
       wrapped.cause = err
       error(wrapped.message)
       throw wrapped

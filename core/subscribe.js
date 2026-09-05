@@ -1,4 +1,4 @@
-// email-wake SSE subscriber (plugin-side, IN-PROCESS).
+// afk SSE subscriber (plugin-side, IN-PROCESS).
 //
 // The PUSH half of the architecture. The daemon parses replies, persists them
 // durably, and broadcasts a `delivery` event over SSE. This module runs INSIDE

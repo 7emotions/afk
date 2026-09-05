@@ -1,4 +1,4 @@
-// email-wake T4 integration test (throwaway).
+// afk T4 integration test (throwaway).
 //
 // 1. Integration: startWatcher -> IDLE push on self-send fires onMail within ~8s.
 // 2. Reconnect: destroy underlying socket -> watcher reconnects + re-selects -> 2nd self-send fires.
@@ -46,7 +46,7 @@ async function sendSelfEmail(tag) {
     from: config.smtp.user,
     to: recipient,
     subject: `[idle-test] ${tag} ${Date.now()}`,
-    text: `email-wake T4 idle integration test (${tag})`,
+    text: `afk T4 idle integration test (${tag})`,
   })
   console.log(`[SMTP] sent ${tag}: messageId=${info.messageId}`)
   return info

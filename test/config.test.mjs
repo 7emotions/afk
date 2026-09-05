@@ -1,4 +1,4 @@
-// email-wake config tuning unit tests.
+// afk config tuning unit tests.
 //
 // Proves the tuning block is (a) optional with the CURRENT values as defaults
 // and (b) overridable per-field via `raw.tuning`. The current values must match
@@ -12,7 +12,7 @@
 //   backoffMaxMs     60_000  (watcher.js   BACKOFF_MAX_MS)
 //
 // No network, no IMAP/SMTP — hermetic temp config files, empty env (so the
-// real process env can never leak EMAIL_WAKE_* overrides into the assertions).
+// real process env can never leak AFK_* overrides into the assertions).
 
 import { test, after } from "node:test"
 import assert from "node:assert/strict"
@@ -22,7 +22,7 @@ import { join } from "node:path"
 
 import { loadConfig, DEFAULT_TUNING } from "../config.js"
 
-const tmp = mkdtempSync(join(tmpdir(), "email-wake-config-"))
+const tmp = mkdtempSync(join(tmpdir(), "afk-config-"))
 after(() => {
   rmSync(tmp, { recursive: true, force: true })
 })

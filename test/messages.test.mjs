@@ -1,4 +1,4 @@
-// email-wake messages i18n unit tests.
+// afk messages i18n unit tests.
 //
 // Proves the two sides of the i18n change:
 //   (a) DEFAULT_MESSAGES is English and loadMessages({}) returns it (default).
@@ -91,13 +91,13 @@ function makeTool({ config }) {
   }
   const toolDef = createRequestDecisionTool({
     getClient: () => client,
-    getDirectory: () => "/tmp/email-wake-messages-test",
+    getDirectory: () => "/tmp/afk-messages-test",
     registerDecision: async () => ({ alreadyPending: false }),
     config,
     createTransport: () => ({
       sendMail: async (mail) => {
         calls.push({ mail })
-        return { messageId: "<mock-messages@email-wake.test>" }
+        return { messageId: "<mock-messages@afk.test>" }
       },
     }),
   })

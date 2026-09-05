@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// email-wake LIVE verification — UID-cursor detection fix.
+// afk LIVE verification — UID-cursor detection fix.
 //
 // Proves the detection no longer depends on `\Seen` (the "回复了没反应" bug) by
 // replacing the UNSEEN+SUBJECT search with a persistent UID cursor:
@@ -18,7 +18,7 @@
 //
 // Run:  node test/uidcursor.live.mjs
 //
-// Evidence: /home/lorenzo/.omo/evidence/task-uidcursor-email-wake.log
+// Evidence: /home/lorenzo/.omo/evidence/task-uidcursor-afk.log
 //
 // Non-destructive: only SELF-addressed test mail is sent; every test message is
 // marked \Seen at cleanup; the real journal/cursor are isolated via env vars.
@@ -35,14 +35,14 @@ import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync, readFile
 const HERE = dirname(fileURLToPath(import.meta.url))
 const PLUGIN_DIR = join(HERE, "..")
 const DAEMON = join(PLUGIN_DIR, "daemon.js")
-const EVIDENCE = "/home/lorenzo/.omo/evidence/task-uidcursor-email-wake.log"
+const EVIDENCE = "/home/lorenzo/.omo/evidence/task-uidcursor-afk.log"
 
 // Isolate journal + cursor BEFORE importing process.js / uid-cursor.js (they
 // capture their paths at module load).
-const tmp = mkdtempSync(join(tmpdir(), "email-wake-uidcursor-"))
-process.env.EMAIL_WAKE_JOURNAL = join(tmp, "journal.json")
-process.env.EMAIL_WAKE_LAST_UID = join(tmp, "last-uid.json")
-process.env.EMAIL_WAKE_DEBUG = "1"
+const tmp = mkdtempSync(join(tmpdir(), "afk-uidcursor-"))
+process.env.AFK_JOURNAL = join(tmp, "journal.json")
+process.env.AFK_LAST_UID = join(tmp, "last-uid.json")
+process.env.AFK_DEBUG = "1"
 
 const { loadConfig } = await import(join(HERE, "../config.js"))
 const { scanAndProcess } = await import(join(HERE, "../process.js"))
@@ -239,10 +239,10 @@ async function part3() {
 
   // Simulate a fresh daemon start: clear the persisted cursor + in-memory cache.
   try {
-    rmSync(process.env.EMAIL_WAKE_LAST_UID, { force: true })
+    rmSync(process.env.AFK_LAST_UID, { force: true })
   } catch {}
   resetCursor()
-  log(`  cleared cursor (${process.env.EMAIL_WAKE_LAST_UID}); current uidNext=${mb.uidNext}`)
+  log(`  cleared cursor (${process.env.AFK_LAST_UID}); current uidNext=${mb.uidNext}`)
 
   const deliveries = []
   const queueStore = makeQueueStore(deliveries)
@@ -272,10 +272,10 @@ async function part4() {
     stdio: ["ignore", "pipe", "pipe"],
     env: {
       ...process.env,
-      EMAIL_WAKE_DAEMON_PORT: String(DAEMON_PORT),
-      EMAIL_WAKE_DEBUG: "1",
-      EMAIL_WAKE_JOURNAL: journalFile,
-      EMAIL_WAKE_LAST_UID: cursorFile,
+      AFK_DAEMON_PORT: String(DAEMON_PORT),
+      AFK_DEBUG: "1",
+      AFK_JOURNAL: journalFile,
+      AFK_LAST_UID: cursorFile,
     },
   })
   daemon.stdout.on("data", (d) => logFd.write(d))
@@ -397,10 +397,10 @@ async function cleanup(anchor) {
 // ---------------------------------------------------------------------------
 async function run() {
   log("=".repeat(70))
-  log(`EMAIL-WAKE UID-CURSOR LIVE VERIFICATION — ${new Date().toISOString()}`)
+  log(`AFK UID-CURSOR LIVE VERIFICATION — ${new Date().toISOString()}`)
   log(`REPLY_SESSION=${REPLY_SESSION}`)
-  log(`journal=${process.env.EMAIL_WAKE_JOURNAL}`)
-  log(`cursor=${process.env.EMAIL_WAKE_LAST_UID}`)
+  log(`journal=${process.env.AFK_JOURNAL}`)
+  log(`cursor=${process.env.AFK_LAST_UID}`)
   log("=".repeat(70))
 
   const p1 = await part1()

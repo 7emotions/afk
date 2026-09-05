@@ -1,4 +1,4 @@
-// email-wake daemon registry unit tests.
+// afk daemon registry unit tests.
 //
 // Covers reserve/release, dedupe semantics (alreadyPending), and TTL expiry.
 // Pure in-memory module — no network, no IMAP/SMTP. A fake clock is injected

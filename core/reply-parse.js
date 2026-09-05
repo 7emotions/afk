@@ -1,4 +1,4 @@
-// email-wake reply detection + parsing (T6).
+// afk reply detection + parsing (T6).
 //
 // PURE-logic module: given an already-structured email object, decide whether
 // it is a decision reply and extract the routing token (session ID) + a

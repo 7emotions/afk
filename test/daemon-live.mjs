@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// email-wake LIVE daemon integration (single-watcher architecture).
+// afk LIVE daemon integration (single-watcher architecture).
 //
 // Proves the daemon's reply pipeline end-to-end against the real QQ mailbox,
 // in an ISOLATED XDG sandbox (a throwaway opencode serve provides the target
 // serverUrl; the real user opencode DB/instances are never touched):
 //
 //   1. start a sandbox `opencode serve --pure` (isolated XDG_* dirs) → its URL.
-//   2. start the daemon (real QQ config, isolated EMAIL_WAKE_JOURNAL, debug on).
+//   2. start the daemon (real QQ config, isolated AFK_JOURNAL, debug on).
 //   3. POST /register { sessionID: "ses_daemon<ts>", serverUrl: <serve URL> }.
 //   4. SMTP-send `Re: [omo:ses_daemon<ts>] x` to the shared mailbox.
 //   5. assert the daemon FOUND it, looked up the registry, and attempted an
@@ -17,7 +17,7 @@
 //
 // Run:  node test/daemon-live.mjs
 //
-// Evidence: /home/lorenzo/.omo/evidence/task-daemon-email-wake.log
+// Evidence: /home/lorenzo/.omo/evidence/task-daemon-afk.log
 
 import nodemailer from "nodemailer"
 import { ImapFlow } from "imapflow"
@@ -41,7 +41,7 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const PLUGIN_DIR = join(HERE, "..")
 const DAEMON = join(PLUGIN_DIR, "daemon.js")
 const OPENDCODE_BIN = "/home/lorenzo/.opencode/bin/opencode"
-const EVIDENCE = "/home/lorenzo/.omo/evidence/task-daemon-email-wake.log"
+const EVIDENCE = "/home/lorenzo/.omo/evidence/task-daemon-afk.log"
 const REAL_CONFIG_HOME = join(process.env.HOME ?? "/home/lorenzo", ".config")
 const REAL_DATA_HOME = join(process.env.HOME ?? "/home/lorenzo", ".local/share")
 
@@ -61,11 +61,11 @@ function log(...args) {
 // Isolate the daemon's journal AND UID cursor BEFORE the daemon process starts
 // (inject.js / uid-cursor.js read their env paths at module load inside the
 // daemon process).
-const JOURNAL = join(tmpdir(), `email-wake-daemon-journal-${process.pid}.json`)
-const CURSOR = join(tmpdir(), `email-wake-daemon-cursor-${process.pid}.json`)
+const JOURNAL = join(tmpdir(), `afk-daemon-journal-${process.pid}.json`)
+const CURSOR = join(tmpdir(), `afk-daemon-cursor-${process.pid}.json`)
 
 // Sandbox XDG dirs — the serve must never touch the real opencode config/DB.
-const sandbox = mkdtempSync(join(tmpdir(), "email-wake-sandbox-"))
+const sandbox = mkdtempSync(join(tmpdir(), "afk-sandbox-"))
 const XDG_CONFIG_HOME = join(sandbox, "config")
 const XDG_DATA_HOME = join(sandbox, "data")
 const XDG_STATE_HOME = join(sandbox, "state")
@@ -96,10 +96,10 @@ function serveEnv() {
 function daemonEnv() {
   return {
     ...process.env,
-    EMAIL_WAKE_DAEMON_PORT: String(DAEMON_PORT),
-    EMAIL_WAKE_DEBUG: "1",
-    EMAIL_WAKE_JOURNAL: JOURNAL,
-    EMAIL_WAKE_LAST_UID: CURSOR,
+    AFK_DAEMON_PORT: String(DAEMON_PORT),
+    AFK_DEBUG: "1",
+    AFK_JOURNAL: JOURNAL,
+    AFK_LAST_UID: CURSOR,
   }
 }
 
@@ -275,7 +275,7 @@ async function waitForLogLine(substr, timeoutMs) {
 // ---------------------------------------------------------------------------
 async function run() {
   log("=".repeat(70))
-  log(`EMAIL-WAKE DAEMON LIVE INTEGRATION — ${new Date().toISOString()}`)
+  log(`AFK DAEMON LIVE INTEGRATION — ${new Date().toISOString()}`)
   log(`SESSION=${SESSION}`)
   log(`daemon port=${DAEMON_PORT}`)
   log(`journal=${JOURNAL}`)

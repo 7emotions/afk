@@ -1,4 +1,4 @@
-// email-wake T8 unit tests — gap-fill cases.
+// afk T8 unit tests — gap-fill cases.
 //
 // Two genuine cross-module gaps:
 //
@@ -45,13 +45,13 @@ test("round-trip: request_decision stamps [omo:<rootSessionID>] that reply-parse
   const createTransport = () => ({
     sendMail: async (mail) => {
       stampedSubject = mail.subject
-      return { messageId: "<mock-roundtrip@email-wake.test>" }
+      return { messageId: "<mock-roundtrip@afk.test>" }
     },
   })
 
   const toolDef = createRequestDecisionTool({
     getClient: () => client,
-    getDirectory: () => "/tmp/email-wake-test",
+    getDirectory: () => "/tmp/afk-test",
     registerDecision: async () => ({ alreadyPending: false }),
     config: {
       smtp: { host: "smtp.qq.com", port: 465, secure: true, user: "sender@test.com", password: "s" },

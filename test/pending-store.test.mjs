@@ -1,4 +1,4 @@
-// email-wake pending-store unit tests.
+// afk pending-store unit tests.
 //
 // The durable half of the P0 fix: a parsed reply is persisted to disk (not an
 // in-memory queue) so a daemon crash between parse and ack can NEVER lose it.
@@ -12,7 +12,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-const tmp = mkdtempSync(join(tmpdir(), "email-wake-pending-"))
+const tmp = mkdtempSync(join(tmpdir(), "afk-pending-"))
 after(() => {
   rmSync(tmp, { recursive: true, force: true })
 })

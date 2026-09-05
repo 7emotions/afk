@@ -1,4 +1,4 @@
-// email-wake T7 unit tests — injection + ack dedupe.
+// afk T7 unit tests — injection + ack dedupe.
 //
 // Covers: payload DATA-NOT-INSTRUCTION framing, the exact session.prompt call
 // shape, non-throwing {ok:false} on injection failure, \Seen flag-marking,
@@ -14,8 +14,8 @@ import { join } from "node:path"
 // Point the journal at a throwaway temp file BEFORE importing inject.js so the
 // real <plugin>/journal.json is never touched. Static import would hoist, so
 // inject.js is loaded dynamically after the env var is set.
-const tmp = mkdtempSync(join(tmpdir(), "email-wake-journal-"))
-process.env.EMAIL_WAKE_JOURNAL = join(tmp, "journal.json")
+const tmp = mkdtempSync(join(tmpdir(), "afk-journal-"))
+process.env.AFK_JOURNAL = join(tmp, "journal.json")
 
 const {
   buildPayload,
@@ -144,7 +144,7 @@ test("markSeenAndJournal: second call for the same UID does not duplicate the en
   await markSeenAndJournal(imapClient, "INBOX", uid)
   await markSeenAndJournal(imapClient, "INBOX", uid)
 
-  const arr = JSON.parse(readFileSync(process.env.EMAIL_WAKE_JOURNAL, "utf8"))
+  const arr = JSON.parse(readFileSync(process.env.AFK_JOURNAL, "utf8"))
   assert.equal(arr.filter((x) => x === String(uid)).length, 1, "journal must contain the UID exactly once")
 })
 
