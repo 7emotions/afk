@@ -1,6 +1,6 @@
 {
   "name": "opencode-afk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "AFK OpenCode plugin: /afk to leave, reply by email to wake the agent.",
   "type": "module",
   "main": "index.js",
