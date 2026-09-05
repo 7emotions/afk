@@ -1,9 +1,32 @@
 {
-  "name": "afk",
+  "name": "opencode-afk",
   "version": "0.1.0",
   "description": "AFK OpenCode plugin: /afk to leave, reply by email to wake the agent.",
   "type": "module",
   "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "files": [
+    "index.js",
+    "request-decision.js",
+    "notify.js",
+    "mailer.js",
+    "daemon.js",
+    "install.js",
+    "config.js",
+    "messages.js",
+    "core",
+    "store",
+    "command",
+    "assets",
+    "config.example.json",
+    "AGENTS.md",
+    "INSTALLATION.md",
+    "README.md",
+    "README.en.md"
+  ],
   "dependencies": {
     "@opencode-ai/plugin": "^1.18.25",
     "@opencode-ai/sdk": "^1.18.25",
