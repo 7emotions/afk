@@ -16,7 +16,7 @@
 
 import { test, after } from "node:test"
 import assert from "node:assert/strict"
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -81,4 +81,55 @@ test("redact (config.toJSON) includes the tuning block without leaking credentia
   assert.deepEqual(serialized.tuning.claimTtlMs, 7_000)
   assert.equal(serialized.imap.password, "***", "password must be masked in the serialized form")
   assert.equal(serialized.smtp.password, "***")
+})
+
+// ---------------------------------------------------------------------------
+// Config path resolution chain
+// ---------------------------------------------------------------------------
+
+function writeValidConfig(path, user = "u@qq.com") {
+  writeFileSync(
+    path,
+    JSON.stringify({
+      imap: { host: "imap.qq.com", port: 993, secure: true, user, password: "p" },
+      smtp: { host: "smtp.qq.com", port: 465, secure: true, user, password: "p" },
+    }),
+    "utf8"
+  )
+}
+
+function mkOpencodeDir() {
+  const dir = join(tmp, `opencode-${Math.random().toString(36).slice(2)}`)
+  mkdirSync(dir, { recursive: true })
+  return dir
+}
+
+test("user-level ~/.config/opencode/afk.json wins over the plugin-dir default", () => {
+  const opencodeDir = mkOpencodeDir()
+  const userPath = join(opencodeDir, "afk.json")
+  writeValidConfig(userPath, "user-level@qq.com")
+  const config = loadConfig({ env: { OPENCODE_CONFIG_DIR: opencodeDir } })
+  assert.equal(config.imap.user, "user-level@qq.com")
+})
+
+test("AFK_CONFIG overrides the user-level config", () => {
+  const opencodeDir = mkOpencodeDir()
+  writeValidConfig(join(opencodeDir, "afk.json"), "user-level@qq.com")
+  const envPath = join(tmp, `config-${Math.random().toString(36).slice(2)}.json`)
+  writeValidConfig(envPath, "env-override@qq.com")
+  const config = loadConfig({
+    env: { OPENCODE_CONFIG_DIR: opencodeDir, AFK_CONFIG: envPath },
+  })
+  assert.equal(config.imap.user, "env-override@qq.com")
+})
+
+test("no user-level config -> falls back to the plugin-dir default (missing -> ENOENT error)", () => {
+  const opencodeDir = mkOpencodeDir() // dir exists but has no afk.json
+  // The repo's own plugin dir has no config.json (gitignored), so the fallback
+  // hits DEFAULT_CONFIG_PATH and fails to read — proving the user-level file
+  // was NOT picked and the legacy plugin-dir default was used.
+  assert.throws(
+    () => loadConfig({ env: { OPENCODE_CONFIG_DIR: opencodeDir } }),
+    /failed to read config file/
+  )
 })

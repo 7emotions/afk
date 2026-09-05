@@ -1,15 +1,33 @@
 // afk configuration loader (T2).
 //
-// Loads config.json, applies defaults, applies env overrides, and validates
+// Loads the config, applies defaults, applies env overrides, and validates
 // required fields. Never logs or serializes the password (masked as "***").
+//
+// Config file resolution chain (first hit wins):
+//   1. options.path            — explicit path (tests / one-off overrides)
+//   2. AFK_CONFIG env          — deployment override
+//   3. ~/.config/opencode/afk.json — the STABLE user-level config (like
+//      oh-my-openagent.jsonc). Survives npm @latest updates: the plugin is
+//      reinstalled into a fresh cache dir on every update, but the opencode
+//      config dir is never wiped.
+//   4. <plugin dir>/config.json — legacy fallback (source installs, tests)
 
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
+import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 export const DEFAULT_CONFIG_PATH = join(__dirname, "config.json")
+
+function opencodeConfigDir(env) {
+  return env.OPENCODE_CONFIG_DIR || join(homedir(), ".config", "opencode")
+}
+
+export function userConfigPath(env = process.env) {
+  return join(opencodeConfigDir(env), "afk.json")
+}
 
 const DEFAULTS = {
   imap: {
@@ -92,18 +110,18 @@ function validate(imap) {
   }
 }
 
-// Loads and validates the configuration.
-//
-// options.path — explicit config file path (defaults to DEFAULT_CONFIG_PATH,
-//   overridable via AFK_CONFIG).
-// options.env  — env object to read overrides from (defaults to process.env).
+// Loads and validates the configuration. The config file path follows the
+// resolution chain documented at the top of this file; options.path and
+// options.env override their defaults (tests inject both).
 //
 // Returns the resolved config. Real passwords are accessible on the returned
 // object (e.g. `config.imap.password`) for IMAP/SMTP use; serializing the
 // object (JSON.stringify / console.log of a stringify) masks them via toJSON.
 export function loadConfig(options = {}) {
   const env = options.env ?? process.env
-  const path = options.path ?? env.AFK_CONFIG ?? DEFAULT_CONFIG_PATH
+  const userPath = userConfigPath(env)
+  const path =
+    options.path ?? env.AFK_CONFIG ?? (existsSync(userPath) ? userPath : DEFAULT_CONFIG_PATH)
 
   let raw
   try {

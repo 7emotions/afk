@@ -49,12 +49,21 @@ Add one line to the `plugin` array in `~/.config/opencode/opencode.jsonc`:
 ```
 
 On the next opencode start it auto-installs `opencode-afk@latest` from npm into its
-plugin directory (e.g. `~/.config/opencode/node_modules/opencode-afk/` on this
-machine). **After the first install**, copy `config.example.json` to `config.json`
-in that directory, fill in the credentials, and restart opencode again.
+plugin directory. **After the first install**, create the stable user-level config
+(the afk counterpart of `oh-my-openagent.jsonc`):
+
+```bash
+mkdir -p ~/.config/opencode
+cp <plugin-dir>/config.example.json ~/.config/opencode/afk.json
+```
+
+Fill in the credentials in `~/.config/opencode/afk.json` and restart opencode. The
+config lives in the opencode config directory, not inside the plugin directory, so
+it **survives every `@latest` update that reinstalls the plugin**.
 
 > **Updates:** when a maintainer publishes a new version, just **restart opencode**
-> and `@latest` is picked up automatically — no manual copying, no installer.
+> and `@latest` is picked up automatically — no manual copying, no installer, and
+> your config is never overwritten by the fresh package directory.
 
 ### Copy-paste install — give this to your LLM
 
@@ -119,9 +128,9 @@ Users need to do nothing — restart opencode to pull `@latest`.
 
 ## Quick start
 
-1. Install the plugin and write a `config.json` (copy `config.example.json`;
-   npm installs into `~/.config/opencode/node_modules/opencode-afk/`, source
-   installs into `~/.config/opencode/plugins/afk/`).
+1. Install the plugin and write the config: npm installs read
+   `~/.config/opencode/afk.json` (copy `config.example.json` — survives updates);
+   source installs read the plugin directory's `config.json`.
    At minimum you need valid IMAP + SMTP credentials (a QQ auth code works as
    the password) and a `recipient`.
 2. Reload opencode. The plugin ensures its daemon is running and loads.
@@ -200,8 +209,11 @@ is seen by all instances immediately.
 ---
 ## Configuration
 
-Both the plugin (`index.js`) and the daemon (`daemon.js`) read `config.json` in
-the plugin directory. See `config.example.json` for a complete, commented-by-
+Both the plugin (`index.js`) and the daemon (`daemon.js`) resolve the config file
+by priority (first hit wins): the `AFK_CONFIG` env var →
+`~/.config/opencode/afk.json` (the stable user-level config — survives npm
+updates) → the plugin directory's `config.json` (legacy fallback, used by source
+installs and tests). See `config.example.json` for a complete, commented-by-
 shape example (it contains no real secrets).
 
 ### `config.json` fields
@@ -292,7 +304,7 @@ Every connection field is overridable via env vars (they take precedence over
 
 | Variable | Meaning |
 |----------|---------|
-| `AFK_CONFIG` | Config file path (default `<plugin>/config.json`) |
+| `AFK_CONFIG` | Config file path (highest priority; when unset the chain above applies: `~/.config/opencode/afk.json`, else the plugin-dir `config.json`) |
 | `AFK_IMAP_HOST` / `AFK_IMAP_PORT` / `AFK_IMAP_USER` / `AFK_IMAP_PASSWORD` | IMAP override |
 | `AFK_SMTP_HOST` / `AFK_SMTP_PORT` / `AFK_SMTP_USER` / `AFK_SMTP_PASSWORD` | SMTP override |
 | `AFK_RECIPIENT` | Recipient override |

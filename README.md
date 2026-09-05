@@ -45,9 +45,16 @@
 ]
 ```
 
-重启 opencode 时，它会从 npm 自动安装 `opencode-afk@latest` 到插件目录（本机示例：`~/.config/opencode/node_modules/opencode-afk/`）。**首次安装后**，在该目录下把 `config.example.json` 复制为 `config.json` 并填入凭据，再次重启即可使用。
+重启 opencode 时，它会从 npm 自动安装 `opencode-afk@latest` 到插件目录。**首次安装后**，创建稳定的用户级配置（类似 `oh-my-openagent.jsonc`）：
 
-> **更新**：维护者发布新版本后，你只需**重启 opencode**，`@latest` 即自动跟进——无需手动拷贝或运行安装器。
+```bash
+mkdir -p ~/.config/opencode
+cp <插件目录>/config.example.json ~/.config/opencode/afk.json
+```
+
+编辑 `~/.config/opencode/afk.json` 填入凭据，重启即可使用。配置放在 opencode 配置目录而非插件目录，这样**每次 `@latest` 更新重装插件后配置依然存活**。
+
+> **更新**：维护者发布新版本后，你只需**重启 opencode**，`@latest` 即自动跟进——无需手动拷贝或运行安装器，配置也不会被刷新目录覆盖。
 
 ### 复制粘贴式安装（直接交给你的 LLM）
 
@@ -105,7 +112,7 @@ git push --tags
 
 ## 快速上手
 
-1. 安装插件并编写 `config.json`（复制 `config.example.json`；npm 方式装在 `~/.config/opencode/node_modules/opencode-afk/`，源码方式在 `~/.config/opencode/plugins/afk/`）。至少需要有效的 IMAP 与 SMTP 凭据（QQ 授权码即可作为密码）以及一个 `recipient`。
+1. 安装插件并编写配置：npm 方式在 `~/.config/opencode/afk.json`（复制 `config.example.json`，更新后仍然存活）；源码方式在插件目录的 `config.json`。至少需要有效的 IMAP 与 SMTP 凭据（QQ 授权码即可作为密码）以及一个 `recipient`。
 2. 重新加载 opencode。插件会确保其守护进程正在运行并完成加载。
 3. 在会话中，智能体可以调用 `request_decision(subject, question, { context, options, recommendation })`。该工具会把问题以邮件形式发出，并返回 `Decision requested — pause and end this turn; wait for the reply to be injected`。
 4. 回复邮件。守护进程检测到回复，属主实例将其注入，会话随即继续。
@@ -159,7 +166,7 @@ OpenCode 会从全局命令目录 `~/.config/opencode/command(s)/<name>.md`（�
 ---
 ## 配置
 
-插件（`index.js`）与守护进程（`daemon.js`）都会读取插件目录下的 `config.json`。完整、以结构本身作为注释的示例请参阅 `config.example.json`（其中不含任何真实密钥）。
+插件（`index.js`）与守护进程（`daemon.js`）按以下优先级解析配置文件（首个命中生效）：`AFK_CONFIG` 环境变量 → `~/.config/opencode/afk.json`（稳定用户级配置，npm 更新后仍存活）→ 插件目录下的 `config.json`（旧路径兜底，源码安装/测试用）。完整、以结构本身作为注释的示例请参阅 `config.example.json`（其中不含任何真实密钥）。
 
 ### `config.json` 字段
 
@@ -235,7 +242,7 @@ OpenCode 会从全局命令目录 `~/.config/opencode/command(s)/<name>.md`（�
 
 | 变量 | 含义 |
 |----------|---------|
-| `AFK_CONFIG` | 配置文件路径（默认 `<plugin>/config.json`） |
+| `AFK_CONFIG` | 配置文件路径（最高优先级；默认链见上：未设置时读 `~/.config/opencode/afk.json`，否则插件目录 `config.json`） |
 | `AFK_IMAP_HOST` / `AFK_IMAP_PORT` / `AFK_IMAP_USER` / `AFK_IMAP_PASSWORD` | IMAP 覆盖 |
 | `AFK_SMTP_HOST` / `AFK_SMTP_PORT` / `AFK_SMTP_USER` / `AFK_SMTP_PASSWORD` | SMTP 覆盖 |
 | `AFK_RECIPIENT` | 收件人覆盖 |

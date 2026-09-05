@@ -22,20 +22,25 @@ Steps to install and configure the **afk** OpenCode plugin (npm package
    ls ~/.config/opencode/node_modules/opencode-afk/index.js
    ```
 
-3. Scaffold the config (opencode does not create it for you):
+3. Scaffold the **stable user-level config** (opencode does not create it for
+   you). The config lives in the opencode config directory — not inside the
+   plugin directory — so it survives every `@latest` update that reinstalls the
+   plugin (same pattern as `oh-my-openagent.jsonc`):
 
    ```bash
-   cd ~/.config/opencode/node_modules/opencode-afk
-   cp config.example.json config.json
+   mkdir -p ~/.config/opencode
+   cp ~/.config/opencode/node_modules/opencode-afk/config.example.json \
+      ~/.config/opencode/afk.json
    ```
 
-4. Edit `config.json` and fill in the credentials (see the table below).
+4. Edit `~/.config/opencode/afk.json` and fill in the credentials (see the
+   table below).
 
 5. Restart opencode, then use `/afk` to leave and `/back` to return.
 
 **Updates:** when a new version is published, just restart opencode — the
-`@latest` specifier is re-resolved and the plugin is updated automatically. Your
-`config.json` is left untouched.
+`@latest` specifier is re-resolved and the plugin is updated automatically.
+`~/.config/opencode/afk.json` is never touched.
 
 ## Option B — source / tarball (for development)
 
@@ -63,8 +68,10 @@ ls ~/.config/opencode/plugins/afk/index.js
 
 ## Configure credentials
 
-Edit `~/.config/opencode/plugins/afk/config.json` (Option B) or
-`~/.config/opencode/node_modules/opencode-afk/config.json` (Option A) and fill in:
+The plugin resolves its config file by priority: `AFK_CONFIG` env var →
+`~/.config/opencode/afk.json` (stable user-level; Option A) → the plugin
+directory's `config.json` (legacy fallback; Option B). Edit the one that
+applies to your install and fill in:
 
 | Field | Meaning |
 |-------|---------|
