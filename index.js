@@ -25,6 +25,7 @@ import { setTimeout as sleep } from "node:timers/promises"
 
 import { tool } from "@opencode-ai/plugin"
 import { createRequestDecisionTool } from "./request-decision.js"
+import { createNotifyUserTool } from "./notify.js"
 import { startSubscription } from "./core/subscribe.js"
 import { loadConfig } from "./config.js"
 import { loadMessages } from "./messages.js"
@@ -235,6 +236,11 @@ const server = async (input, _options) => {
         getDirectory: () => directory,
         registerDecision,
         releaseDecision,
+        getMode,
+      }),
+      notify_user: createNotifyUserTool({
+        getClient: () => client,
+        getDirectory: () => directory,
         getMode,
       }),
       set_email_mode: setEmailMode,

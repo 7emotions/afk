@@ -20,36 +20,10 @@
 // daemon broadcasts it over SSE, and the in-process subscriber claims/injects
 // it. request_decision no longer starts a per-session poller.
 
-import nodemailer from "nodemailer"
 import { tool } from "@opencode-ai/plugin"
 import { loadConfig } from "./config.js"
 import { loadMessages } from "./messages.js"
-
-// Resolve the ROOT session of `startSessionID` by walking the parentID chain up
-// until a session with no parentID is found. Mirrors the lineage walk in
-// subagent-spawn-limits.ts. Throws on any failure (no data, SDK error, cycle).
-async function resolveRootSessionID(client, startSessionID, directory) {
-  const visited = new Set()
-  let current = startSessionID
-  for (;;) {
-    if (visited.has(current)) {
-      throw new Error(`afk: session parent cycle while resolving ${startSessionID}`)
-    }
-    visited.add(current)
-
-    // v1 SDK client: HTTP-style shape { path: { id }, query: { directory } }.
-    // (The flat { sessionID } shape is the v2 client and would "not found".)
-    const response = await client.session.get({
-      path: { id: current },
-      ...(directory ? { query: { directory } } : {}),
-    })
-    if (response.error) throw new Error(String(response.error))
-    if (!response.data) throw new Error(`afk: no session data for ${current}`)
-
-    if (!response.data.parentID) return current
-    current = response.data.parentID
-  }
-}
+import { resolveRootSessionID, sendMail, stampSubject } from "./mailer.js"
 
 // Render the decision email body from the structured slots. A good decision
 // email carries the agent's ANALYSIS (context + options/tradeoffs +
@@ -97,7 +71,7 @@ export function createRequestDecisionTool(deps = {}) {
   const releaseDecision = deps.releaseDecision ?? null
   const getMode = deps.getMode ?? null
   const resolveConfig = deps.config !== undefined ? () => deps.config : loadConfig
-  const createTransport = deps.createTransport ?? ((opts) => nodemailer.createTransport(opts))
+  const createTransport = deps.createTransport
   const getMessages = deps.getMessages ?? (() => loadMessages(resolveConfig()))
 
   return tool({
@@ -187,23 +161,12 @@ export function createRequestDecisionTool(deps = {}) {
 
       const config = resolveConfig()
       const to = config.recipient || config.smtp.user
-      const subject = `[omo:${rootSessionID}] ${args.subject}`
+      const subject = stampSubject(rootSessionID, args.subject)
       const text = renderDecisionBody(args, messages)
 
-      let info
       try {
-        const transporter = createTransport({
-          host: config.smtp.host,
-          port: config.smtp.port,
-          secure: config.smtp.secure,
-          auth: { user: config.smtp.user, pass: config.smtp.password },
-        })
-        info = await transporter.sendMail({
-          from: config.smtp.user,
-          to,
-          subject,
-          text,
-        })
+        // Optional dep: undefined → sendMail's nodemailer default factory.
+        await sendMail(config, { to, subject, text }, createTransport)
       } catch (error) {
         // Do NOT pretend it was sent; release the reservation so no stale
         // registry entry lingers (a later ask can reserve fresh).

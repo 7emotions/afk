@@ -25,6 +25,9 @@ export const DEFAULT_MESSAGES = {
     recommendation: "Recommendation:",
     replyInstruction: "Reply to this email with your answer",
   },
+  notifyBody: {
+    replyHint: "Reply to this email to send feedback to the running session.",
+  },
   tool: {
     requested:
       "Decision requested — pause and end this turn; wait for the reply to be injected",
@@ -32,10 +35,14 @@ export const DEFAULT_MESSAGES = {
     mainSessionOnly: "Call from the main session only",
     modeOff:
       "Email mode is off — the human is at the screen. Use the question tool to ask in the conversation instead.",
+    notifyModeOff:
+      "Email mode is off — the human is at the screen. State the conclusion in the conversation instead of emailing.",
     modeOn:
       "Email mode is ON — the human has left the screen; request_decision will email them.",
     modeDisabled:
       "Email mode is OFF — request_decision will use the question tool instead.",
+    notified:
+      "Notification emailed — continue working; the human will read it when back",
   },
 }
 
