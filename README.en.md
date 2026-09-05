@@ -21,6 +21,7 @@ from anywhere and the session auto-resumes — no need to return to the terminal
 ## Features
 
 - **Email decisions** — the agent asks, you answer from anywhere, no terminal needed
+- **Conclusion notifications** — when the agent hits a key conclusion or finishes a task, it emails you a one-way FYI via `notify_user` without pausing its work; replying to that email wakes the session too
 - **`/afk` mode gate** — email only fires after you've left the screen (`/back` returns)
 - **Zero polling** — IMAP IDLE push + one-time catch-up scan, never a timed poller
 - **Push delivery** — SSE broadcast + per-instance ownership self-check (multi-instance safe)
@@ -28,13 +29,32 @@ from anywhere and the session auto-resumes — no need to return to the terminal
 - **i18n** — English defaults, `config.messages` override for any language
 - **Data-not-instruction** — prompt-injection guard on every injected reply
 - **One-shot installer** — `node install.js` copies, installs, registers, and scaffolds
+- **npm distribution** — published as `opencode-afk`; opencode pulls `@latest` automatically on restart (GitHub Actions auto-publish)
 
 See [`AGENTS.md`](AGENTS.md) for the agent-facing instruction (the `request_decision`
-contract and the "pause after asking" rule).
+contract, the "pause after asking" rule, and the `notify_user` conclusion tool).
 
 ---
 
 ## Installation
+
+### Option 1 — npm (recommended)
+
+Add one line to the `plugin` array in `~/.config/opencode/opencode.jsonc`:
+
+```jsonc
+"plugin": [
+  "opencode-afk@latest"
+]
+```
+
+On the next opencode start it auto-installs `opencode-afk@latest` from npm into its
+plugin directory (e.g. `~/.config/opencode/node_modules/opencode-afk/` on this
+machine). **After the first install**, copy `config.example.json` to `config.json`
+in that directory, fill in the credentials, and restart opencode again.
+
+> **Updates:** when a maintainer publishes a new version, just **restart opencode**
+> and `@latest` is picked up automatically — no manual copying, no installer.
 
 ### Copy-paste install — give this to your LLM
 
@@ -45,7 +65,7 @@ Install and configure the afk plugin by following the instructions here:
 https://raw.githubusercontent.com/7emotions/afk/main/INSTALLATION.md
 ```
 
-### One-shot installer (manual)
+### Option 2 — source install / local development (install.js)
 
 ```bash
 git clone https://github.com/7emotions/afk
@@ -82,11 +102,26 @@ Equivalent steps, no installer:
 The plugin depends on `@opencode-ai/plugin`, `@opencode-ai/sdk`, `imapflow`,
 `mailparser`, and `nodemailer`.
 
+### Publishing (maintainers)
+
+The npm package is **`opencode-afk`**. Bump the version locally and push a tag;
+GitHub Actions (`.github/workflows/publish.yml`) runs the unit tests and publishes
+to npm:
+
+```bash
+npm version patch   # 0.1.0 → 0.1.1: syncs package.json / package-lock.json / git tag
+git push --tags
+```
+
+Users need to do nothing — restart opencode to pull `@latest`.
+
 ---
 
 ## Quick start
 
-1. Install the plugin and write a `config.json` (copy `config.example.json`).
+1. Install the plugin and write a `config.json` (copy `config.example.json`;
+   npm installs into `~/.config/opencode/node_modules/opencode-afk/`, source
+   installs into `~/.config/opencode/plugins/afk/`).
    At minimum you need valid IMAP + SMTP credentials (a QQ auth code works as
    the password) and a `recipient`.
 2. Reload opencode. The plugin ensures its daemon is running and loads.
@@ -96,25 +131,30 @@ The plugin depends on `@opencode-ai/plugin`, `@opencode-ai/sdk`, `imapflow`,
    `Decision requested — pause and end this turn; wait for the reply to be injected`.
 4. Reply to the email. The daemon detects the reply, the owning instance injects
    it, and the session continues.
+5. (Optional) While you're away, the agent may call
+   `notify_user(subject, message)` when it finishes a task or reaches a key
+   conclusion — a one-way FYI email that does **not** pause its work. Replying to
+   that notification is injected back into the session as feedback, the same as
+   a decision reply.
 
 ```sh
 # run the unit test suite (no network, no real mailbox)
-node --test test/*.test.mjs
+npm test
 ```
 
 ---
 
 ## Email mode (`/afk` and `/back`)
 
-By default, `request_decision` **refuses to email** the human. Email is only
-allowed when the human has explicitly left the screen — a single **GLOBAL** mode
-flag (`"on"`/`"off"`) stored durably in `mode.json` (gitignored) by the daemon.
-It is global by design: the human is either at the screen or not, regardless of
-how many sessions/instances are running.
+By default, both `request_decision` and `notify_user` **refuse to email** the
+human. Email is only allowed when the human has explicitly left the screen — a
+single **GLOBAL** mode flag (`"on"`/`"off"`) stored durably in `mode.json`
+(gitignored) by the daemon. It is global by design: the human is either at the
+screen or not, regardless of how many sessions/instances are running.
 
-| Mode | Meaning | `request_decision` behavior |
+| Mode | Meaning | Email-tool behavior |
 |------|---------|-----------------------------|
-| `"off"` (default) | Human is at the screen | Refuses: returns the mode-off message (tells the agent to use the built-in `question` tool). No email, no register. |
+| `"off"` (default) | Human is at the screen | Refuses: `request_decision` returns the mode-off message (use the built-in `question` tool); `notify_user` refuses too (state the conclusion in the conversation). No email. |
 | `"on"` | Human has left (`/afk`) | Emails the human as normal. |
 
 The human flips the mode with two commands:
@@ -123,12 +163,14 @@ The human flips the mode with two commands:
 - `/back` — calls `set_email_mode(mode: "off")` (email mode OFF).
 
 When mode is off and the agent needs a decision, it must ask in the conversation
-via opencode's built-in **`question` tool** instead of emailing.
+via opencode's built-in **`question` tool** instead of emailing; `notify_user`
+states the conclusion in the conversation instead.
 
 **Todo checkpoint.** When `request_decision` will EMAIL (mode on), the agent must
 first checkpoint its todo list (write it into the message body, then clear the
 todos) so a pending human reply does not get overridden by todo-continuation.
 When the reply is injected, the agent rebuilds the todos from the checkpoint.
+(`notify_user` does not pause, so it needs no checkpoint.)
 
 ### Registering the commands
 
@@ -222,13 +264,18 @@ deep merge — unmentioned keys keep the English default):
       "recommendation": "Recommendation:",
       "replyInstruction": "Reply to this email with your answer"
     },
+    "notifyBody": {
+      "replyHint": "Reply to this email to send feedback to the running session."
+    },
     "tool": {
       "requested": "Decision requested — pause and end this turn; wait for the reply to be injected",
       "alreadyPending": "A decision is already pending — wait for the reply",
       "mainSessionOnly": "Call from the main session only",
       "modeOff": "Email mode is off — the human is at the screen. Use the question tool to ask in the conversation instead.",
+      "notifyModeOff": "Email mode is off — the human is at the screen. State the conclusion in the conversation instead of emailing.",
       "modeOn": "Email mode is ON — the human has left the screen; request_decision will email them.",
-      "modeDisabled": "Email mode is OFF — request_decision will use the question tool instead."
+      "modeDisabled": "Email mode is OFF — request_decision will use the question tool instead.",
+      "notified": "Notification emailed — continue working; the human will read it when back"
     }
   }
 }
@@ -407,12 +454,15 @@ injected twice, but is **never lost**.
 
 | File | Role |
 |------|------|
-| `index.js` | Plugin entry — thin client: ensure daemon, start the SSE subscriber, expose `request_decision` + `set_email_mode` |
+| `index.js` | Plugin entry — thin client: ensure daemon, start the SSE subscriber, expose `request_decision` + `notify_user` + `set_email_mode` |
 | `daemon.js` | The single-watcher daemon (bind, HTTP: SSE/claim/ack/pending/register/mode, watcher, signals) |
 | `request-decision.js` | The `request_decision` tool (mode gate → register → SMTP send → release) |
+| `notify.js` | The `notify_user` tool (one-way FYI conclusion email: mode gate → SMTP send; no register, no pause) |
+| `mailer.js` | Shared email core: root-session resolution, `[omo:…]` routing-token stamping, SMTP send |
 | `config.js` | Config load + validation + env overrides + `tuning` defaults + password redaction |
 | `messages.js` | User/agent-facing strings (default English, `config.messages` override) |
 | `install.js` | One-shot installer (copy, `npm install`, scaffold config, register, copy commands) |
+| `.github/workflows/publish.yml` | GitHub Actions: on a `v*` tag push, run the tests and publish `opencode-afk` to npm |
 | `core/watcher.js` | Single IMAP IDLE connection, auto-reconnect, catch-up hook |
 | `core/process.js` | Scan → fetch → parse → persist pipeline (no ack) |
 | `core/reply-parse.js` | Pure reply detection + token/body extraction |
@@ -435,8 +485,8 @@ MIT — see [`LICENSE`](LICENSE).
 # unit tests (no network): pending-store, mode-store, registry, inject-ack,
 # process-mail, negative, uid-cursor, daemon HTTP (register + push + mode
 # endpoints + SSE), subscribe, request-decision (incl. the mode gate),
-# reply-parse, unit, messages, config
-node --test test/*.test.mjs
+# notify_user, reply-parse, unit, messages, config
+npm test
 ```
 
 Live integration scripts (hit the real QQ mailbox; run individually; some still

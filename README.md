@@ -19,6 +19,7 @@
 ## 功能
 
 - **邮件决策**：智能体提问，你在任何地方作答，无需终端
+- **结论通知**：智能体达成关键结论/完成任务时，通过 `notify_user` 单向邮件同步给你，不打断其工作；你回复该邮件同样能唤醒会话
 - **`/afk` 模式开关**：只有在你离开屏幕之后（`/back` 可返回）才发送邮件
 - **零轮询**：IMAP IDLE 推送加一次性补扫，绝无定时轮询器
 - **推送投递**：SSE 广播加按实例的属主自检（多实例安全）
@@ -26,12 +27,27 @@
 - **国际化**：默认英文，可通过 `config.messages` 覆盖为任意语言
 - **数据而非指令**：每条注入的回复都带有提示注入防护
 - **一键安装器**：`node install.js` 负责复制、安装、注册并生成配置骨架
+- **npm 分发**：`opencode-afk` 发布到 npm，opencode 重启即自动跟进 `@latest`（GitHub Actions 自动发布）
 
-面向智能体的使用说明请参阅 [`AGENTS.md`](AGENTS.md)（`request_decision` 契约以及「提问后暂停」规则）。
+面向智能体的使用说明请参阅 [`AGENTS.md`](AGENTS.md)（`request_decision` 契约、「提问后暂停」规则与 `notify_user` 结论通知）。
 
 ---
 
 ## 安装
+
+### 方式一：npm（推荐）
+
+在 `~/.config/opencode/opencode.jsonc` 的 `plugin` 数组中加入一行：
+
+```jsonc
+"plugin": [
+  "opencode-afk@latest"
+]
+```
+
+重启 opencode 时，它会从 npm 自动安装 `opencode-afk@latest` 到插件目录（本机示例：`~/.config/opencode/node_modules/opencode-afk/`）。**首次安装后**，在该目录下把 `config.example.json` 复制为 `config.json` 并填入凭据，再次重启即可使用。
+
+> **更新**：维护者发布新版本后，你只需**重启 opencode**，`@latest` 即自动跟进——无需手动拷贝或运行安装器。
 
 ### 复制粘贴式安装（直接交给你的 LLM）
 
@@ -42,7 +58,7 @@ Install and configure the afk plugin by following the instructions here:
 https://raw.githubusercontent.com/7emotions/afk/main/INSTALLATION.md
 ```
 
-### 一键安装（手动）
+### 方式二：源码安装 / 本地开发（install.js）
 
 ```bash
 git clone https://github.com/7emotions/afk
@@ -74,29 +90,41 @@ node install.js
 
 该插件依赖 `@opencode-ai/plugin`、`@opencode-ai/sdk`、`imapflow`、`mailparser` 和 `nodemailer`。
 
+### 发布（维护者）
+
+npm 包名为 **`opencode-afk`**。发布流程：本地打版本号并推送 tag，GitHub Actions（`.github/workflows/publish.yml`）自动跑单测并发布到 npm：
+
+```bash
+npm version patch   # 0.1.0 → 0.1.1：同步 package.json / package-lock.json / git tag
+git push --tags
+```
+
+用户侧无需任何操作——重启 opencode 即拉取 `@latest`。
+
 ---
 
 ## 快速上手
 
-1. 安装插件并编写 `config.json`（复制 `config.example.json`）。至少需要有效的 IMAP 与 SMTP 凭据（QQ 授权码即可作为密码）以及一个 `recipient`。
+1. 安装插件并编写 `config.json`（复制 `config.example.json`；npm 方式装在 `~/.config/opencode/node_modules/opencode-afk/`，源码方式在 `~/.config/opencode/plugins/afk/`）。至少需要有效的 IMAP 与 SMTP 凭据（QQ 授权码即可作为密码）以及一个 `recipient`。
 2. 重新加载 opencode。插件会确保其守护进程正在运行并完成加载。
 3. 在会话中，智能体可以调用 `request_decision(subject, question, { context, options, recommendation })`。该工具会把问题以邮件形式发出，并返回 `Decision requested — pause and end this turn; wait for the reply to be injected`。
 4. 回复邮件。守护进程检测到回复，属主实例将其注入，会话随即继续。
+5. （可选）你离开屏幕后，智能体在完成任务或有关键结论时，可以调用 `notify_user(subject, message)` 单向邮件通知你，且**不暂停**其工作；你回复该通知邮件同样会作为反馈注入回会话。
 
 ```sh
 # run the unit test suite (no network, no real mailbox)
-node --test test/*.test.mjs
+npm test
 ```
 
 ---
 
 ## 邮件模式（`/afk` 与 `/back`）
 
-默认情况下，`request_decision` **拒绝向用户发送邮件**。只有当用户明确离开屏幕时才允许发送邮件，这由守护进程持久化存储于 `mode.json`（已被 git 忽略）中的单一 **GLOBAL** 模式标志（`"on"`/`"off"`）控制。该标志按设计是全局的：无论运行多少个会话/实例，用户要么在屏幕前，要么不在。
+默认情况下，`request_decision` 与 `notify_user` **都拒绝向用户发送邮件**。只有当用户明确离开屏幕时才允许发送邮件，这由守护进程持久化存储于 `mode.json`（已被 git 忽略）中的单一 **GLOBAL** 模式标志（`"on"`/`"off"`）控制。该标志按设计是全局的：无论运行多少个会话/实例，用户要么在屏幕前，要么不在。
 
-| 模式 | 含义 | `request_decision` 行为 |
+| 模式 | 含义 | 邮件工具行为 |
 |------|---------|-----------------------------|
-| `"off"`（默认） | 用户在屏幕前 | 拒绝：返回模式关闭消息（指示智能体改用内置 `question` 工具）。不发邮件、不注册。 |
+| `"off"`（默认） | 用户在屏幕前 | 拒绝：`request_decision` 返回模式关闭消息（改用内置 `question` 工具）；`notify_user` 同样拒绝（直接在对话中陈述结论即可）。不发邮件。 |
 | `"on"` | 用户已离开（`/afk`） | 照常向用户发送邮件。 |
 
 用户通过两个命令切换该模式：
@@ -104,9 +132,9 @@ node --test test/*.test.mjs
 - `/afk`：调用 `set_email_mode(mode: "on")`（打开邮件模式）。
 - `/back`：调用 `set_email_mode(mode: "off")`（关闭邮件模式）。
 
-当模式关闭而智能体需要决策时，它必须改用 opencode 内置的 **`question` 工具**在对话中提问，而不是发送邮件。
+当模式关闭而智能体需要决策时，它必须改用 opencode 内置的 **`question` 工具**在对话中提问，而不是发送邮件；`notify_user` 模式关闭时则在对话中直接陈述结论。
 
-**待办检查点（Todo checkpoint）。** 当 `request_decision` 将要以邮件形式发出（模式开启）时，智能体必须先把待办列表写入检查点（写进消息正文，然后清空待办），以免挂起等待的用户回复被 todo-continuation 覆盖。回复被注入后，智能体再依据检查点重建待办列表。
+**待办检查点（Todo checkpoint）。** 当 `request_decision` 将要以邮件形式发出（模式开启）时，智能体必须先把待办列表写入检查点（写进消息正文，然后清空待办），以免挂起等待的用户回复被 todo-continuation 覆盖。回复被注入后，智能体再依据检查点重建待办列表。（`notify_user` 不暂停，无需检查点。）
 
 ### 注册命令
 
@@ -182,13 +210,18 @@ OpenCode 会从全局命令目录 `~/.config/opencode/command(s)/<name>.md`（�
       "recommendation": "Recommendation:",
       "replyInstruction": "Reply to this email with your answer"
     },
+    "notifyBody": {
+      "replyHint": "Reply to this email to send feedback to the running session."
+    },
     "tool": {
       "requested": "Decision requested — pause and end this turn; wait for the reply to be injected",
       "alreadyPending": "A decision is already pending — wait for the reply",
       "mainSessionOnly": "Call from the main session only",
       "modeOff": "Email mode is off — the human is at the screen. Use the question tool to ask in the conversation instead.",
+      "notifyModeOff": "Email mode is off — the human is at the screen. State the conclusion in the conversation instead of emailing.",
       "modeOn": "Email mode is ON — the human has left the screen; request_decision will email them.",
-      "modeDisabled": "Email mode is OFF — request_decision will use the question tool instead."
+      "modeDisabled": "Email mode is OFF — request_decision will use the question tool instead.",
+      "notified": "Notification emailed — continue working; the human will read it when back"
     }
   }
 }
@@ -314,12 +347,15 @@ sequenceDiagram
 
 | 文件 | 作用 |
 |------|------|
-| `index.js` | 插件入口：轻量客户端，确保守护进程运行、启动 SSE 订阅者、暴露 `request_decision` 与 `set_email_mode` |
+| `index.js` | 插件入口：轻量客户端，确保守护进程运行、启动 SSE 订阅者、暴露 `request_decision`、`notify_user` 与 `set_email_mode` |
 | `daemon.js` | 单一监听守护进程（端口绑定、HTTP：SSE/claim/ack/pending/register/mode、监听器、信号处理） |
 | `request-decision.js` | `request_decision` 工具（模式开关 → 注册 → SMTP 发送 → 释放） |
+| `notify.js` | `notify_user` 工具（单向 FYI 结论通知：模式开关 → SMTP 发送，不注册、不暂停） |
+| `mailer.js` | 共享邮件内核：root 会话解析、`[omo:…]` 路由令牌打标、SMTP 发送 |
 | `config.js` | 配置加载与校验、环境变量覆盖、`tuning` 默认值、密码打码 |
 | `messages.js` | 用户/智能体可见文案（默认英文，可被 `config.messages` 覆盖） |
 | `install.js` | 一键安装器（复制、`npm install`、生成配置骨架、注册、复制命令） |
+| `.github/workflows/publish.yml` | GitHub Actions：推送 `v*` tag 时自动测试并发布 `opencode-afk` 到 npm |
 | `core/watcher.js` | 单一 IMAP IDLE 连接、自动重连、补扫钩子 |
 | `core/process.js` | 扫描 → 获取 → 解析 → 持久化流水线（不含确认） |
 | `core/reply-parse.js` | 纯回复检测以及令牌/正文提取 |
@@ -342,8 +378,8 @@ MIT，详见 [`LICENSE`](LICENSE)。
 # unit tests (no network): pending-store, mode-store, registry, inject-ack,
 # process-mail, negative, uid-cursor, daemon HTTP (register + push + mode
 # endpoints + SSE), subscribe, request-decision (incl. the mode gate),
-# reply-parse, unit, messages, config
-node --test test/*.test.mjs
+# notify_user, reply-parse, unit, messages, config
+npm test
 ```
 
 实网集成脚本（访问真实 QQ 邮箱；需单独运行；部分脚本仍引用推送改造前的契约，不属于自动化测试套件）：`test/daemon-live.mjs`、`test/catch-up.live.mjs`、`test/idle-connect.live.mjs`、`test/uidcursor.live.mjs`、`test/e2e.mjs`、`test/receive-parse-test.mjs`、`test/inject-test.mjs`。
