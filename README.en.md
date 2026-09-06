@@ -21,7 +21,9 @@ from anywhere and the session auto-resumes — no need to return to the terminal
 ## Features
 
 - **Email decisions** — the agent asks, you answer from anywhere, no terminal needed
+- **Spawn a session from email** — reply to any afk email with a body starting `/new <task>` to open a brand-new session in the same project directory and dispatch the task
 - **Conclusion notifications** — when the agent hits a key conclusion or finishes a task, it emails you a one-way FYI via `notify_user` without pausing its work; replying to that email wakes the session too
+- **Automatic pause notifications** — watches opencode's turn-end events and emails you when the agent stops for a while, so you never depend on it remembering to notify
 - **`/afk` mode gate** — email only fires after you've left the screen (`/back` returns)
 - **Zero polling** — IMAP IDLE push + one-time catch-up scan, never a timed poller
 - **Push delivery** — SSE broadcast + per-instance ownership self-check (multi-instance safe)
@@ -32,7 +34,8 @@ from anywhere and the session auto-resumes — no need to return to the terminal
 - **npm distribution** — published as `opencode-afk`; opencode pulls `@latest` automatically on restart (GitHub Actions auto-publish)
 
 See [`AGENTS.md`](AGENTS.md) for the agent-facing instruction (the `request_decision`
-contract, the "pause after asking" rule, and the `notify_user` conclusion tool).
+contract, the "pause after asking" rule, the `notify_user` conclusion tool, and
+the `/new` new-session command).
 
 ---
 
@@ -153,6 +156,32 @@ npm test
 
 ---
 
+## Spawning a new session from email (`/new`)
+
+Want to dispatch a **brand-new task** to the current project while away? Reply to
+any afk email (decision or notification) with a body starting `/new`:
+
+```text
+/new Fix the login page layout bug on Safari
+```
+
+What happens:
+
+- The reply is **not injected** into the session you replied to — instead a NEW
+  session B is created **in that session's project directory**, seeded with the
+  text after `/new` as its first task.
+- If several opencode instances share that directory, the **first to claim the
+  broadcast** creates it (no duplicates).
+- You get a confirmation email stamped with the new session's token — replying
+  to it talks **directly to session B**.
+- The task text is framed as data-not-instruction, never an executable
+  instruction; only `allowList` senders can trigger it.
+- Session B's later decision/conclusion emails route through the usual
+  `[omo:token]` machinery — no extra config.
+
+A bare `/new` (no task text) is treated as a normal reply and injected into the
+original session.
+
 ## Email mode (`/afk` and `/back`)
 
 By default, both `request_decision` and `notify_user` **refuse to email** the
@@ -256,6 +285,7 @@ keep the current behavior unchanged.
 | `tuning.autoIdleDelayMs` | `1000` | `watcher.js` `AUTO_IDLE_DELAY_MS` — quiet period before imapflow auto-starts IDLE |
 | `tuning.backoffInitialMs` | `1000` | `watcher.js` `BACKOFF_INITIAL_MS` — IMAP reconnect backoff start |
 | `tuning.backoffMaxMs` | `60000` | `watcher.js` `BACKOFF_MAX_MS` — IMAP reconnect backoff ceiling |
+| `tuning.pauseNotifyCooldownMs` | `60000` | `pause-notify.js` `DEFAULT_COOLDOWN_MS` — quiet time after a turn end before a "burst over" notification email |
 
 These values are injected into the consumers (`daemon.js`, `index.js`) from
 `config.tuning` — the modules themselves never read the config file.
@@ -278,6 +308,16 @@ deep merge — unmentioned keys keep the English default):
     },
     "notifyBody": {
       "replyHint": "Reply to this email to send feedback to the running session."
+    },
+    "newSessionBody": {
+      "createdSubject": "new session created",
+      "createdIntro": "A new opencode session was created from your /new email",
+      "replyHint": "Reply to this email to talk to the new session directly."
+    },
+    "pauseNotifyBody": {
+      "pauseSubject": "paused after a working burst — here's where things stand",
+      "intro": "This session finished a working burst and is now idle",
+      "replyHint": "Reply to this email to tell the agent to continue."
     },
     "tool": {
       "requested": "Decision requested — pause and end this turn; wait for the reply to be injected",
@@ -478,6 +518,8 @@ injected twice, but is **never lost**.
 | `core/watcher.js` | Single IMAP IDLE connection, auto-reconnect, catch-up hook |
 | `core/process.js` | Scan → fetch → parse → persist pipeline (no ack) |
 | `core/reply-parse.js` | Pure reply detection + token/body extraction |
+| `core/new-session.js` | `/new`: spawn a session in the replying session's directory + seed its first task (data-not-instruction) + confirmation email |
+| `core/pause-notify.js` | Pause notification: watches `session.idle`, emails when a working burst ends (the mechanism guarantee that notifications never rely on the agent's memory) |
 | `core/inject.js` | Reply injection (DATA-NOT-INSTRUCTION) + `\Seen`/journal ack |
 | `core/subscribe.js` | In-process SSE subscriber: ownership self-check → claim → inject → ack + reconnect catch-up |
 | `store/pending-store.js` | Durable pending deliveries on disk (P0 fix — claim/ack atomicity + TTL) |

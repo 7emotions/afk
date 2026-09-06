@@ -19,7 +19,9 @@
 ## 功能
 
 - **邮件决策**：智能体提问，你在任何地方作答，无需终端
+- **从邮件新建会话**：回复任意 afk 邮件、正文以 `/new 任务` 开头，即可在当前会话所在的项目目录开出一个全新会话派发任务
 - **结论通知**：智能体达成关键结论/完成任务时，通过 `notify_user` 单向邮件同步给你，不打断其工作；你回复该邮件同样能唤醒会话
+- **停顿自动通知**：监听 opencode 的 turn-end 事件，agent 停下一段时间后自动邮件告知当前进展——不再依赖它记得发通知
 - **`/afk` 模式开关**：只有在你离开屏幕之后（`/back` 可返回）才发送邮件
 - **零轮询**：IMAP IDLE 推送加一次性补扫，绝无定时轮询器
 - **推送投递**：SSE 广播加按实例的属主自检（多实例安全）
@@ -29,7 +31,7 @@
 - **一键安装器**：`node install.js` 负责复制、安装、注册并生成配置骨架
 - **npm 分发**：`opencode-afk` 发布到 npm，opencode 重启即自动跟进 `@latest`（GitHub Actions 自动发布）
 
-面向智能体的使用说明请参阅 [`AGENTS.md`](AGENTS.md)（`request_decision` 契约、「提问后暂停」规则与 `notify_user` 结论通知）。
+面向智能体的使用说明请参阅 [`AGENTS.md`](AGENTS.md)（`request_decision` 契约、「提问后暂停」规则、`notify_user` 结论通知与 `/new` 新建会话）。
 
 ---
 
@@ -125,6 +127,26 @@ npm test
 
 ---
 
+## 从邮件新建会话（`/new`）
+
+想趁离屏时派一个**全新任务**给当前项目？回复任意一封 afk 邮件（决策或通知均可），正文以 `/new` 开头：
+
+```text
+/new 修复登录页在 Safari 上的样式错位
+```
+
+效果：
+
+- **不注入**你回复的那个会话——而是在**那个会话所在的项目目录**里创建一个全新的会话 B，以 `/new` 后的文字作为它的首个任务；
+- 同一目录若开着多个 opencode 实例，**先抢到广播者**创建（多实例不重复）；
+- 你会收到一封带新会话 token 的确认邮件，回复它就相当于**直接跟新会话 B 对话**；
+- 任务正文按「数据而非指令」框架注入，绝不当作可执行指令；仅 `allowList` 白名单发件人可触发；
+- 新会话后续的决策/结论邮件自动走现有 `[omo:token]` 路由，无需额外配置。
+
+一个裸 `/new`（无任务文字）会被当作普通回复注入原会话。
+
+---
+
 ## 邮件模式（`/afk` 与 `/back`）
 
 默认情况下，`request_decision` 与 `notify_user` **都拒绝向用户发送邮件**。只有当用户明确离开屏幕时才允许发送邮件，这由守护进程持久化存储于 `mode.json`（已被 git 忽略）中的单一 **GLOBAL** 模式标志（`"on"`/`"off"`）控制。该标志按设计是全局的：无论运行多少个会话/实例，用户要么在屏幕前，要么不在。
@@ -200,6 +222,7 @@ OpenCode 会从全局命令目录 `~/.config/opencode/command(s)/<name>.md`（�
 | `tuning.autoIdleDelayMs` | `1000` | `watcher.js` 中的 `AUTO_IDLE_DELAY_MS`：imapflow 自动启动 IDLE 前的静默期 |
 | `tuning.backoffInitialMs` | `1000` | `watcher.js` 中的 `BACKOFF_INITIAL_MS`：IMAP 重连退避起始值 |
 | `tuning.backoffMaxMs` | `60000` | `watcher.js` 中的 `BACKOFF_MAX_MS`：IMAP 重连退避上限 |
+| `tuning.pauseNotifyCooldownMs` | `60000` | `pause-notify.js` 中的 `DEFAULT_COOLDOWN_MS`：turn 结束后静默多久判定「一波工作收尾」并邮件通知 |
 
 这些值由 `config.tuning` 注入到各消费模块（`daemon.js`、`index.js`），各模块自身从不读取配置文件。
 
@@ -219,6 +242,16 @@ OpenCode 会从全局命令目录 `~/.config/opencode/command(s)/<name>.md`（�
     },
     "notifyBody": {
       "replyHint": "Reply to this email to send feedback to the running session."
+    },
+    "newSessionBody": {
+      "createdSubject": "new session created",
+      "createdIntro": "A new opencode session was created from your /new email",
+      "replyHint": "Reply to this email to talk to the new session directly."
+    },
+    "pauseNotifyBody": {
+      "pauseSubject": "paused after a working burst — here's where things stand",
+      "intro": "This session finished a working burst and is now idle",
+      "replyHint": "Reply to this email to tell the agent to continue."
     },
     "tool": {
       "requested": "Decision requested — pause and end this turn; wait for the reply to be injected",
@@ -366,6 +399,8 @@ sequenceDiagram
 | `core/watcher.js` | 单一 IMAP IDLE 连接、自动重连、补扫钩子 |
 | `core/process.js` | 扫描 → 获取 → 解析 → 持久化流水线（不含确认） |
 | `core/reply-parse.js` | 纯回复检测以及令牌/正文提取 |
+| `core/new-session.js` | `/new`：从邮件在会话所在目录新建会话并注入首个任务（数据非指令）+ 确认邮件 |
+| `core/pause-notify.js` | 停顿通知：监听 `session.idle`，工作波收尾后自动邮件（防漏通知的机制保障） |
 | `core/inject.js` | 回复注入（DATA-NOT-INSTRUCTION）+ `\Seen`/journal 确认 |
 | `core/subscribe.js` | 进程内 SSE 订阅者：属主自检 → 抢占 → 注入 → 确认，外加重连补扫 |
 | `store/pending-store.js` | 磁盘上持久化的待投递消息（P0 修复：claim/ack 原子性与 TTL） |
