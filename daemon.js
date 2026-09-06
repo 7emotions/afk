@@ -89,6 +89,7 @@ function writeDelivery(res, entry) {
       sessionID: entry.sessionID,
       body: entry.body,
       from: entry.from,
+      command: entry.command,
     })}\n\n`)
   } catch {
     /* client disconnected mid-write — removed on 'close' */
@@ -305,9 +306,9 @@ export function createHttpServer(registry, pendingStore, { debug: debugFn, error
 // `/ack` handler's job.
 function makeStoreReply(pendingStore, { broadcast, debug: debugFn } = {}) {
   const debugLog = debugFn ?? (() => {})
-  return async (_client, { sessionID, body, from, uid }) => {
-    const { created, entry } = pendingStore.add({ uid, sessionID, body, from })
-    debugLog(`stored pending delivery uid=${entry.uid} session=${sessionID}${created ? " (new)" : " (dup)"}`)
+  return async (_client, { sessionID, body, from, uid, command }) => {
+    const { created, entry } = pendingStore.add({ uid, sessionID, body, from, command })
+    debugLog(`stored pending delivery uid=${entry.uid} session=${sessionID}${created ? " (new)" : " (dup)"}${command === "new" ? " command=new" : ""}`)
     if (created) broadcast(entry)
     return { ok: true }
   }

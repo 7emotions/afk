@@ -28,6 +28,16 @@ export const DEFAULT_MESSAGES = {
   notifyBody: {
     replyHint: "Reply to this email to send feedback to the running session.",
   },
+  newSessionBody: {
+    createdSubject: "new session created",
+    createdIntro: "A new opencode session was created from your /new email",
+    replyHint: "Reply to this email to talk to the new session directly.",
+  },
+  pauseNotifyBody: {
+    pauseSubject: "paused after a working burst — here's where things stand",
+    intro: "This session finished a working burst and is now idle",
+    replyHint: "Reply to this email to tell the agent to continue.",
+  },
   tool: {
     requested:
       "Decision requested — pause and end this turn; wait for the reply to be injected",

@@ -157,13 +157,23 @@ export function extractBody(text, html) {
  * @param {string|null|undefined} [mail.inReplyTo]
  * @param {string|null|undefined} [mail.text]
  * @param {string|null|undefined} [mail.html]
- * @returns {{sessionID: string, body: string, from?: string}|null}
+ * @returns {{sessionID: string, body: string, from?: string, command?: "new"}|null}
  *   The parsed reply, or null when there is no token, or it is not a reply
- *   (including the agent's own self-sent copy).
+ *   (including the agent's own self-sent copy). `command: "new"` marks a
+ *   "/new <task>" body — a request to spawn a NEW session in the replying
+ *   session's directory, seeded with <task>, instead of injecting here.
  */
 export function parseReply({ subject, from, inReplyTo, text, html }) {
   const sessionID = extractToken(subject)
   if (!sessionID) return null
   if (!isReply(subject, inReplyTo)) return null
-  return { sessionID, body: extractBody(text, html), from }
+  const body = extractBody(text, html)
+  // The /new command: the human replies to a session's email with a body that
+  // STARTS with "/new <task>" → instead of injecting into that session, spawn a
+  // NEW session in the SAME directory (the replying session's directory, which
+  // the token resolves) and seed it with <task>. A bare "/new" with no task
+  // text falls back to a normal reply (nothing useful to seed a session with).
+  const m = /^\/new\s+([\s\S]+)$/.exec(body)
+  if (m) return { sessionID, body: m[1].trim(), from, command: "new" }
+  return { sessionID, body, from }
 }

@@ -22,6 +22,7 @@
 // reconnect) → the reply may be injected twice, but is never lost.
 
 import { injectReply } from "./inject.js"
+import { createSessionAndPrompt } from "./new-session.js"
 
 export const DEFAULT_RECONNECT_BASE_MS = 1000
 export const DEFAULT_RECONNECT_MAX_MS = 30_000
@@ -42,11 +43,16 @@ function parseEvent(block) {
  * Exported for direct testing of the claim/ack ordering; startSubscription feeds
  * it every SSE event.
  *
- * @param {{uid: string, sessionID: string, body: string, from?: string}} delivery
+ * A `command: "new"` delivery is a "/new <task>" request: after the same
+ * ownership + claim gates, it SPAWNS a new session in this instance's directory
+ * (the replying session lives here, so the new one does too) instead of
+ * injecting into the replying session.
+ *
+ * @param {{uid: string, sessionID: string, body: string, from?: string, command?: string}} delivery
  * @param {object} opts  same shape as startSubscription.
- * @returns {Promise<boolean>} true iff the reply was injected AND acked.
+ * @returns {Promise<boolean>} true iff the delivery was handled AND acked.
  */
-export async function handleDelivery({ uid, sessionID, body, from }, opts) {
+export async function handleDelivery({ uid, sessionID, body, from, command }, opts) {
   const {
     daemonUrl,
     instanceId,
@@ -96,10 +102,16 @@ export async function handleDelivery({ uid, sessionID, body, from }, opts) {
     return false
   }
 
-  // Inject IN-PROCESS (flat v2 signature — never the HTTP-style {path,body}).
-  const result = await injectReply(client, { sessionID, body, from })
+  // command "new" → spawn a NEW session in THIS directory (the ownership check
+  // above already proved the replying session lives here). Otherwise inject the
+  // reply into the replying session as usual.
+  const result =
+    command === "new"
+      ? await createSessionAndPrompt(client, { directory, body, from }, opts.newSessionDeps)
+      : await injectReply(client, { sessionID, body, from })
   if (!result || result.ok !== true) {
-    error(`[subscribe] inject failed for ${sessionID} (${result?.error ?? "unknown"}) — NOT acking; pending stays for retry`)
+    const where = command === "new" ? "new-session spawn" : "inject"
+    error(`[subscribe] ${where} failed for ${sessionID} (${result?.error ?? "unknown"}) — NOT acking; pending stays for retry`)
     return false
   }
 

@@ -163,12 +163,16 @@ export async function processMail(imapClient, client, config, uid, deps = {}) {
 
   // Persist (daemon: durable pending-store + SSE broadcast; plugin: in-process
   // inject). `uid` is passed so the daemon's store can key the pending entry —
-  // inject.js's default injectReply ignores it. NO \Seen, NO journal here.
+  // inject.js's default injectReply ignores it. `command` ("new") is passed so
+  // the daemon's store can carry it into the pending entry + SSE broadcast,
+  // where the owning instance turns it into a new-session spawn instead of an
+  // inject. NO \Seen, NO journal here.
   const result = await inject(client, {
     sessionID: reply.sessionID,
     body: reply.body,
     from: reply.from,
     uid,
+    command: reply.command,
   })
   if (!result || result.ok !== true) {
     const message = (result && result.error) || "unknown persistence failure"

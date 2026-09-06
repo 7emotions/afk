@@ -161,3 +161,30 @@ test("parseReply: empty body falls back to (无正文)", () => {
   const r = parseReply({ subject: "Re: [omo:ses_x] hi", text: "", html: "" })
   assert.equal(r.body, "(无正文)")
 })
+
+// ---------------------------------------------------------------------------
+// /new command (spawn a session in the replying session's directory)
+// ---------------------------------------------------------------------------
+
+test("parseReply: body starting '/new <task>' sets command=new and strips the marker", () => {
+  const r = parseReply({ subject: "Re: [omo:ses_x] hi", text: "/new 修复登录 bug", html: "" })
+  assert.deepEqual(r, { sessionID: "ses_x", body: "修复登录 bug", from: undefined, command: "new" })
+})
+
+test("parseReply: '/new' marker may span lines; whitespace after is trimmed", () => {
+  const r = parseReply({ subject: "答复: [omo:ses_x] hi", text: "/new\n整理一下周报并发给我", html: "" })
+  assert.equal(r.command, "new")
+  assert.equal(r.body, "整理一下周报并发给我")
+})
+
+test("parseReply: a bare '/new' with no task text is a normal reply (no command)", () => {
+  const r = parseReply({ subject: "Re: [omo:ses_x] hi", text: "/new", html: "" })
+  assert.equal(r.command, undefined)
+  assert.equal(r.body, "/new")
+})
+
+test("parseReply: '/new' not at the start is a normal reply (no command)", () => {
+  const r = parseReply({ subject: "Re: [omo:ses_x] hi", text: "please /new a session", html: "" })
+  assert.equal(r.command, undefined)
+  assert.equal(r.body, "please /new a session")
+})

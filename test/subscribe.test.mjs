@@ -33,9 +33,12 @@ after(() => {
 })
 
 // A fake in-process SDK client. session.get returns the session's directory from
-// the ownership map; session.prompt records calls (v1 HTTP-style signature).
+// the ownership map; session.prompt records calls (v1 HTTP-style signature);
+// session.create returns a fresh session id.
 function makeClient(ownership = {}) {
   const promptCalls = []
+  const createCalls = []
+  let created = 0
   const client = {
     session: {
       get: async ({ path }) => {
@@ -43,13 +46,18 @@ function makeClient(ownership = {}) {
         if (!(sessionID in ownership)) return { error: { status: 404 } }
         return { data: { directory: ownership[sessionID] } }
       },
+      create: async (req) => {
+        createCalls.push(req)
+        created += 1
+        return { data: { id: `ses_new_${created}` } }
+      },
       promptAsync: async (req) => {
         promptCalls.push(req)
         return undefined
       },
     },
   }
-  return { client, promptCalls }
+  return { client, promptCalls, createCalls }
 }
 
 // A fake daemon HTTP API. Records claim/ack bodies; serves a controllable SSE
@@ -207,6 +215,80 @@ test("handleDelivery: a lost claim does NOT inject (multi-instance dedupe)", asy
   assert.equal(daemon.claimed.length, 1, "claim is attempted")
   assert.equal(promptCalls.length, 0, "a lost claim must not inject")
   assert.equal(daemon.acked.length, 0)
+})
+
+test("handleDelivery: command=new spawns a NEW session in this directory (create+prompt+ack, no inject into A)", async () => {
+  const { client, createCalls, promptCalls } = makeClient({ ses_a: "/proj" })
+  const daemon = makeFakeDaemon()
+
+  const ok = await handleDelivery(
+    { uid: "5", sessionID: "ses_a", body: "修复登录 bug", from: "a@b.c", command: "new" },
+    {
+      daemonUrl: "http://daemon",
+      instanceId: "inst-1",
+      directory: "/proj",
+      getClient: () => client,
+      fetchImpl: daemon.fetchImpl,
+      // config:null → skip the real-SMTP confirmation email in tests
+      newSessionDeps: { config: null },
+    }
+  )
+
+  assert.equal(ok, true)
+  assert.equal(createCalls.length, 1, "a /new delivery must create a session")
+  assert.deepEqual(createCalls[0], {
+    body: { title: "修复登录 bug" },
+    query: { directory: "/proj" },
+  })
+  assert.equal(promptCalls.length, 1, "the new session must receive the task as its first prompt")
+  assert.equal(promptCalls[0].path.id, "ses_new_1")
+  assert.deepEqual(promptCalls[0].body, {
+    parts: [{ type: "text", text: buildPayload({ from: "a@b.c", body: "修复登录 bug" }) }],
+  })
+  assert.deepEqual(daemon.acked, [{ uid: "5", sessionID: "ses_a", instanceId: "inst-1" }])
+})
+
+test("handleDelivery: command=new on a NON-owned session is ignored (no create, no ack)", async () => {
+  const { client, createCalls } = makeClient({ ses_a: "/other-proj" })
+  const daemon = makeFakeDaemon()
+
+  const ok = await handleDelivery(
+    { uid: "6", sessionID: "ses_a", body: "x", from: "a@b.c", command: "new" },
+    {
+      daemonUrl: "http://daemon",
+      instanceId: "inst-1",
+      directory: "/proj",
+      getClient: () => client,
+      fetchImpl: daemon.fetchImpl,
+      newSessionDeps: { config: null },
+    }
+  )
+
+  assert.equal(ok, false)
+  assert.equal(createCalls.length, 0, "a non-owned /new must not create")
+  assert.equal(daemon.acked.length, 0)
+})
+
+test("handleDelivery: session.create failure does NOT ack (pending stays for retry)", async () => {
+  const { client } = makeClient({ ses_a: "/proj" })
+  client.session.create = async () => ({ error: { status: 400, body: "boom" } })
+  const daemon = makeFakeDaemon()
+
+  const ok = await handleDelivery(
+    { uid: "7", sessionID: "ses_a", body: "x", from: "a@b.c", command: "new" },
+    {
+      daemonUrl: "http://daemon",
+      instanceId: "inst-1",
+      directory: "/proj",
+      getClient: () => client,
+      fetchImpl: daemon.fetchImpl,
+      error: () => {},
+      newSessionDeps: { config: null },
+    }
+  )
+
+  assert.equal(ok, false)
+  assert.equal(daemon.acked.length, 0, "a failed spawn must NEVER ack")
 })
 
 // ---------------------------------------------------------------------------

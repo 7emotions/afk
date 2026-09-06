@@ -65,6 +65,19 @@ test("a missing/corrupt pending.json is tolerated (starts empty)", () => {
 // claim / ack atomicity
 // ---------------------------------------------------------------------------
 
+test("command round-trips: a /new entry persists command='new' across crash + restart", () => {
+  const { store, path } = makeStore()
+  store.add({ uid: 555, sessionID: "ses_a", body: "fix bug", from: "a@b.c", command: "new" })
+  assert.equal(store.get("555").command, "new")
+
+  const restarted = createPendingStore({ path })
+  assert.equal(restarted.list()[0].command, "new", "command must survive the durable reload")
+
+  // A plain reply entry carries command: undefined.
+  store.add({ uid: 556, sessionID: "ses_a", body: "ok", from: "a@b.c" })
+  assert.equal(store.get("556").command, undefined)
+})
+
 test("claim: first claimant wins; a second instance cannot claim; same instance can re-claim", () => {
   const { store } = makeStore()
   store.add({ uid: 1, sessionID: "ses_a", body: "b", from: "a@b.c" })

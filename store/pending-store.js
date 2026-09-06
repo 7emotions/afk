@@ -8,10 +8,12 @@
 // pending. If the daemon crashes between parse and ack, the entry survives on
 // disk and is re-broadcast on the next instance connect — no message loss.
 //
-// Each entry: { uid, sessionID, body, from, queuedAt, claimedBy?, claimedAt? }.
+// Each entry: { uid, sessionID, body, from, command?, queuedAt, claimedBy?, claimedAt? }.
 //   - uid       : IMAP UID (primary key — one message = one UID = one session).
 //   - sessionID : the ROOT session this reply routes to (from the [omo:] token).
 //   - body/from : the parsed reply payload.
+//   - command   : "new" when the reply is a "/new <task>" new-session request
+//                 (the owning instance spawns a session instead of injecting).
 //   - queuedAt  : when it was persisted.
 //   - claimedBy : the instanceId that currently holds the claim (undefined when
 //                 unclaimed). Multi-instance dedupe: first claimant wins.
@@ -61,6 +63,7 @@ function load(path) {
       sessionID: typeof entry.sessionID === "string" ? entry.sessionID : "",
       body: typeof entry.body === "string" ? entry.body : "",
       from: typeof entry.from === "string" ? entry.from : "",
+      command: entry.command === "new" ? "new" : undefined,
       queuedAt: typeof entry.queuedAt === "number" ? entry.queuedAt : 0,
       claimedBy: typeof entry.claimedBy === "string" && entry.claimedBy ? entry.claimedBy : undefined,
       claimedAt: typeof entry.claimedAt === "number" ? entry.claimedAt : undefined,
@@ -76,6 +79,7 @@ function toEntry(entry) {
     sessionID: entry.sessionID,
     body: entry.body,
     from: entry.from,
+    command: entry.command === "new" ? "new" : undefined,
     queuedAt: entry.queuedAt,
     claimedBy: entry.claimedBy,
     claimedAt: entry.claimedAt,
@@ -118,7 +122,7 @@ export function createPendingStore(opts = {}) {
      * SSE broadcast.
      * @returns {{created: boolean, entry: object}}
      */
-    add({ uid, sessionID, body, from }) {
+    add({ uid, sessionID, body, from, command }) {
       const key = String(uid)
       const existing = items.get(key)
       if (existing) return { created: false, entry: toEntry(existing) }
@@ -127,6 +131,7 @@ export function createPendingStore(opts = {}) {
         sessionID,
         body,
         from,
+        command: command === "new" ? "new" : undefined,
         queuedAt: now(),
         claimedBy: undefined,
         claimedAt: undefined,

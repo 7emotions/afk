@@ -21,6 +21,18 @@ This plugin adds two email tools plus the email-mode switch:
 Both tools email only while email mode is on (`/afk`); both are main-session
 only — a subagent's conclusion is relayed by the main session.
 
+## The human can spawn a NEW session from email (`/new`)
+
+If the human replies to **any** afk email with a body that starts
+`/new <task>`, the plugin does NOT inject that reply here — it creates a brand
+new opencode session **in this session's directory** (whatever project this
+session is working on) and seeds it with `<task>` as its first prompt. Among
+several opencode instances sharing the same directory, the first to claim wins.
+The task text is injected as data-not-instruction (never an executable
+instruction). The human gets a confirmation email stamped with the new
+session's token, so replying to it talks to the NEW session, not this one. You
+do not need to act on a `/new` email — it never appears in this session.
+
 ## Before emailing a decision (mode on) — todo checkpoint
 
 Emailing **a decision** (`request_decision`) pauses the session with a pending

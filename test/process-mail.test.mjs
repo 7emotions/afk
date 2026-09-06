@@ -161,7 +161,7 @@ test("processMail: persist {ok:false} leaves message UNSEEN (no flag-mark, no jo
   assert.ok(!readJournal().includes("3001"), "failed persistence must never journal the UID")
 })
 
-test("processMail: real mailparser extracts subject/From/In-Reply-To/text/html from RFC822 source", async () => {
+test("processMail: real parse persists only (no flags)", async () => {
   const raw = [
     "From: \"Human\" <human@example.com>",
     "To: agent@qq.com",
@@ -203,6 +203,44 @@ test("processMail: real mailparser extracts subject/From/In-Reply-To/text/html f
   assert.equal(res.sessionID, "ses_test")
   assert.deepEqual(events, ["prompt"], "real parse must persist only (no flags)")
   assert.ok(!readJournal().includes("4001"), "processMail must NOT journal")
+})
+
+test("processMail: a '/new <task>' reply passes command='new' + stripped task to the persist seam", async () => {
+  const raw = [
+    "From: \"Human\" <human@example.com>",
+    "To: agent@qq.com",
+    "Subject: =?utf-8?B?UmU6IFtvbW86c2VzX3Rlc3RdIGhlbGxv?=",
+    "In-Reply-To: <abc@example.com>",
+    "Message-ID: <xyz@example.com>",
+    "MIME-Version: 1.0",
+    "Content-Type: text/plain; charset=utf-8",
+    "",
+    "/new 整理仓库文档并提交",
+    "",
+  ].join("\r\n")
+
+  let captured = null
+  const imapClient = {
+    fetchOne: async (seq) => ({ seq: Number(seq), uid: Number(seq), source: Buffer.from(raw) }),
+    messageFlagsAdd: async () => {},
+  }
+  const client = { session: { promptAsync: async () => undefined } }
+
+  const res = await processMail(imapClient, client, {
+    folder: "INBOX",
+    allowList: ["human@example.com"],
+  }, 4100, {
+    injectReply: async (_c, args) => {
+      captured = args
+      return { ok: true }
+    },
+  })
+
+  assert.equal(res.ok, true)
+  assert.equal(res.sessionID, "ses_test")
+  assert.equal(captured.command, "new", "the /new marker must reach the persist seam as command=new")
+  assert.equal(captured.body, "整理仓库文档并提交", "the task text (marker stripped) must be passed through")
+  assert.equal(captured.sessionID, "ses_test")
 })
 
 // ---------------------------------------------------------------------------
