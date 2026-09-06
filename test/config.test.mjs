@@ -10,6 +10,7 @@
 //   autoIdleDelayMs   1_000  (watcher.js   AUTO_IDLE_DELAY_MS)
 //   backoffInitialMs  1_000  (watcher.js   BACKOFF_INITIAL_MS)
 //   backoffMaxMs     60_000  (watcher.js   BACKOFF_MAX_MS)
+//   pauseNotifyCooldownMs 60_000 (pause-notify.js DEFAULT_COOLDOWN_MS)
 //
 // No network, no IMAP/SMTP — hermetic temp config files, empty env (so the
 // real process env can never leak AFK_* overrides into the assertions).
@@ -50,6 +51,7 @@ test("DEFAULT_TUNING matches the historic hardcoded constants (unchanged behavio
     autoIdleDelayMs: 1000,
     backoffInitialMs: 1000,
     backoffMaxMs: 60_000,
+    pauseNotifyCooldownMs: 60_000,
   })
 })
 

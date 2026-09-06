@@ -53,6 +53,7 @@ const DEFAULTS = {
     autoIdleDelayMs: 1000,
     backoffInitialMs: 1000,
     backoffMaxMs: 60_000,
+    pauseNotifyCooldownMs: 60_000,
   },
 }
 

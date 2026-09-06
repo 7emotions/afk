@@ -27,8 +27,10 @@ import { tool } from "@opencode-ai/plugin"
 import { createRequestDecisionTool } from "./request-decision.js"
 import { createNotifyUserTool } from "./notify.js"
 import { startSubscription } from "./core/subscribe.js"
+import { createPauseNotifier, DEFAULT_COOLDOWN_MS } from "./core/pause-notify.js"
 import { loadConfig } from "./config.js"
 import { loadMessages } from "./messages.js"
+import { sendMail, stampSubject } from "./mailer.js"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const DAEMON_PATH = join(__dirname, "daemon.js")
@@ -229,6 +231,36 @@ const server = async (input, _options) => {
     },
   })
 
+  // Pause notification: email the away human when a working burst ends (their
+  // turn-end safety net — do not rely on the agent remembering notify_user).
+  // The email body is built at send time with a lazy config/messages load, so a
+  // missing config just means no email (best-effort, never crashes the plugin).
+  const pauseNotifier = createPauseNotifier({
+    directory,
+    getClient: () => client,
+    getMode,
+    cooldownMs: config?.tuning?.pauseNotifyCooldownMs ?? DEFAULT_COOLDOWN_MS,
+    sendEmail: async ({ sessionID, title, summary }) => {
+      const cfg = loadConfig()
+      const msgs = loadMessages(cfg)
+      const text = [
+        `${msgs.pauseNotifyBody.intro}:`,
+        "",
+        `session: ${sessionID}`,
+        `title: ${title}`,
+        "",
+        summary,
+        "",
+        msgs.pauseNotifyBody.replyHint,
+      ].join("\n")
+      await sendMail(cfg, {
+        to: cfg.recipient || cfg.smtp.user,
+        subject: stampSubject(sessionID, msgs.pauseNotifyBody.pauseSubject),
+        text,
+      })
+    },
+  })
+
   return {
     tool: {
       request_decision: createRequestDecisionTool({
@@ -245,6 +277,9 @@ const server = async (input, _options) => {
       }),
       set_email_mode: setEmailMode,
     },
+    // Every opencode event lands here in-process; pauseNotifier watches
+    // session.idle (turn end) and ignores everything else.
+    event: (input) => pauseNotifier.handleEvent(input),
   }
 }
 
