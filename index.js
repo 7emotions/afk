@@ -30,7 +30,8 @@ import { startSubscription } from "./core/subscribe.js"
 import { createPauseNotifier, DEFAULT_COOLDOWN_MS } from "./core/pause-notify.js"
 import { loadConfig } from "./config.js"
 import { loadMessages } from "./messages.js"
-import { sendMail, stampSubject } from "./mailer.js"
+import { sendMail, stampSubject, resolveRootSessionID } from "./mailer.js"
+import { bearerHeader } from "./store/secret.js"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const DAEMON_PATH = join(__dirname, "daemon.js")
@@ -39,6 +40,34 @@ const DEFAULT_DAEMON_PORT = 4100
 const DAEMON_PROBE_TIMEOUT_MS = 1000
 const DAEMON_READY_TIMEOUT_MS = 15000
 const DAEMON_POLL_INTERVAL_MS = 250
+
+// The daemon only needs AFK_* config, the opencode config dir (to find afk.json
+// in the same place the plugin does), and the minimal system vars Node needs to
+// run. The full opencode env carries ANTHROPIC_API_KEY and every AFK_* credential
+// — a detached long-lived daemon must NOT inherit it (issue #8).
+const DAEMON_ENV_ALLOWLIST = [
+  "PATH",
+  "HOME",
+  "USER",
+  "LOGNAME",
+  "LANG",
+  "LC_ALL",
+  "LC_CTYPE",
+  "TMPDIR",
+  "TMP",
+  "TEMP",
+  "OPENCODE_CONFIG_DIR",
+  "AFK_DEBUG",
+]
+
+function daemonEnv(env = process.env) {
+  const out = {}
+  for (const [key, value] of Object.entries(env)) {
+    if (value === undefined) continue
+    if (DAEMON_ENV_ALLOWLIST.includes(key) || key.startsWith("AFK_")) out[key] = value
+  }
+  return out
+}
 
 // Module state: the injected in-process client + daemon URL captured at plugin
 // load, and the single SSE subscriber (started once, survives the tool-call
@@ -76,13 +105,15 @@ async function probeHealth(url, timeoutMs = DAEMON_PROBE_TIMEOUT_MS) {
   }
 }
 
-// Spawn a detached daemon process. Only ONE wins the bind (atomic single-
+// Spawn a detached daemon process with a MINIMAL env whitelist (issue #8): the
+// full opencode env (ANTHROPIC_API_KEY + AFK_* credentials) must not leak into
+// a detached, long-lived process. Only ONE wins the bind (atomic single-
 // instance); a loser exits quietly on EADDRINUSE.
 function spawnDaemon(env = process.env) {
   const child = spawn(process.execPath, [DAEMON_PATH], {
     detached: true,
     stdio: "ignore",
-    env,
+    env: daemonEnv(env),
   })
   child.unref()
   return child
@@ -164,7 +195,7 @@ const server = async (input, _options) => {
     }
     const res = await fetch(`${daemonUrl}/register`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...bearerHeader() },
       body: JSON.stringify({ sessionID }),
     })
     if (!res.ok) throw new Error(`register failed: HTTP ${res.status}`)
@@ -177,7 +208,7 @@ const server = async (input, _options) => {
     try {
       await fetch(`${daemonUrl}/register`, {
         method: "DELETE",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...bearerHeader() },
         body: JSON.stringify({ sessionID }),
       })
     } catch {
@@ -189,7 +220,7 @@ const server = async (input, _options) => {
   // safe default: never email when the mode cannot be confirmed as "on".
   const getMode = async () => {
     try {
-      const res = await fetch(`${daemonUrl}/mode`)
+      const res = await fetch(`${daemonUrl}/mode`, { headers: { ...bearerHeader() } })
       if (!res.ok) return "off"
       const data = await res.json().catch(() => null)
       return data?.mode === "on" ? "on" : "off"
@@ -214,7 +245,27 @@ const server = async (input, _options) => {
         .enum(["on", "off"])
         .describe("Target mode: 'on' (human away) or 'off' (human at screen)"),
     },
-    async execute(args, _toolContext) {
+    async execute(args, toolContext) {
+      // MAIN SESSION ONLY guard (issue #7): a subagent (or injected agent) must
+      // not flip the GLOBAL email mode. Mirrors request_decision / notify_user's
+      // root-session check (resolveRootSessionID walks the parentID chain; a
+      // subagent's root != itself).
+      const currentSessionID = toolContext?.sessionID
+      if (!currentSessionID) {
+        return "[ERROR] afk: missing sessionID in tool context"
+      }
+      if (client) {
+        let rootSessionID
+        try {
+          rootSessionID = await resolveRootSessionID(client, currentSessionID, directory)
+        } catch {
+          return messages.tool.mainSessionOnly
+        }
+        if (rootSessionID !== currentSessionID) {
+          return messages.tool.mainSessionOnly
+        }
+      }
+
       if (!(await probeHealth(daemonUrl))) {
         if (!(await ensureDaemon(daemonUrl))) {
           throw new Error("afk daemon unreachable")
@@ -222,7 +273,7 @@ const server = async (input, _options) => {
       }
       const res = await fetch(`${daemonUrl}/mode`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...bearerHeader() },
         body: JSON.stringify({ mode: args.mode }),
       })
       if (!res.ok) throw new Error(`set_email_mode failed: HTTP ${res.status}`)
@@ -283,6 +334,6 @@ const server = async (input, _options) => {
   }
 }
 
-export { resolveDaemonUrl, probeHealth, spawnDaemon, ensureDaemon }
+export { resolveDaemonUrl, probeHealth, spawnDaemon, ensureDaemon, daemonEnv }
 
 export default { id: "afk", server }
