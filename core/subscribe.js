@@ -23,6 +23,7 @@
 
 import { injectReply } from "./inject.js"
 import { createSessionAndPrompt } from "./new-session.js"
+import { bearerHeader } from "../store/secret.js"
 
 export const DEFAULT_RECONNECT_BASE_MS = 1000
 export const DEFAULT_RECONNECT_MAX_MS = 30_000
@@ -89,7 +90,7 @@ export async function handleDelivery({ uid, sessionID, body, from, command }, op
   try {
     const res = await fetchImpl(`${daemonUrl}/claim`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...bearerHeader() },
       body: JSON.stringify({ uid, sessionID, instanceId }),
     })
     const data = await res.json().catch(() => null)
@@ -120,7 +121,7 @@ export async function handleDelivery({ uid, sessionID, body, from, command }, op
   try {
     await fetchImpl(`${daemonUrl}/ack`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...bearerHeader() },
       body: JSON.stringify({ uid, sessionID, instanceId }),
     })
   } catch (err) {
@@ -161,7 +162,7 @@ export function startSubscription(opts) {
   async function catchUp() {
     let data
     try {
-      const res = await fetchImpl(`${daemonUrl}/pending`)
+      const res = await fetchImpl(`${daemonUrl}/pending`, { headers: { ...bearerHeader() } })
       if (!res.ok) return
       data = await res.json().catch(() => null)
     } catch {
@@ -184,7 +185,10 @@ export function startSubscription(opts) {
 
     let res
     try {
-      res = await fetchImpl(`${daemonUrl}/events`, { signal: controller.signal })
+      res = await fetchImpl(`${daemonUrl}/events`, {
+        headers: { ...bearerHeader() },
+        signal: controller.signal,
+      })
     } catch {
       if (!stopped) scheduleReconnect()
       return

@@ -38,10 +38,13 @@ import { createRegistry } from "./store/registry.js"
 import { createPendingStore } from "./store/pending-store.js"
 import { createModeStore } from "./store/mode-store.js"
 import { markSeenAndJournal } from "./core/inject.js"
-
+import { ensureSecret, constantTimeEqual } from "./store/secret.js"
 const DEFAULT_PORT = 4100
 const DEFAULT_HOST = "127.0.0.1"
 const MAX_BODY_BYTES = 1_000_000
+// Bounds (issue #2): an unbounded registry / SSE client set is a local DoS.
+const MAX_REGISTRY_ENTRIES = 10_000
+const MAX_SSE_CLIENTS = 100
 
 function debugEnabled() {
   return process.env.AFK_DEBUG === "1" || process.env.AFK_DEBUG === "true"
@@ -115,10 +118,14 @@ function writeModeEvent(res, mode) {
  * @param {{debug?: Function, error?: Function, onAck?: (uid: string) => Promise<void>, modeStore?: ReturnType<typeof createModeStore>}} [deps]
  * @returns {{server: import("node:http").Server, broadcast: (entry: object) => void}}
  */
-export function createHttpServer(registry, pendingStore, { debug: debugFn, error: errorFn, onAck, modeStore } = {}) {
+export function createHttpServer(registry, pendingStore, { debug: debugFn, error: errorFn, onAck, modeStore, secret } = {}) {
   const log = debugFn ?? (() => {})
   const errLog = errorFn ?? ((...a) => console.error(...a))
   const mode = modeStore ?? createModeStore()
+  // Auth secret (issue #2). Empty → auth disabled (hermetic tests that don't
+  // inject one). The production daemon always passes a non-empty secret via
+  // ensureSecret() in startDaemon.
+  const authSecret = secret ?? ""
 
   // Connected SSE clients (response objects). One-way push only.
   const clients = new Set()
@@ -129,6 +136,25 @@ export function createHttpServer(registry, pendingStore, { debug: debugFn, error
 
   function broadcastMode(next) {
     for (const res of clients) writeModeEvent(res, next)
+  }
+
+  // DNS-rebinding guard (issue #2): only a loopback Host header is accepted, so a
+  // malicious page resolving an attacker domain to 127.0.0.1 cannot drive the API.
+  function isLoopbackHost(req) {
+    const host = String(req.headers.host ?? "")
+      .replace(/:\d+$/, "") // drop the port
+      .replace(/^\[|\]$/g, "") // drop IPv6 brackets
+      .toLowerCase()
+    return host === "127.0.0.1" || host === "localhost" || host === "::1"
+  }
+
+  // Bearer-token check (constant-time). /health is exempt (liveness only, leaks
+  // nothing); every other route requires the shared secret.
+  function authorized(req) {
+    if (!authSecret) return true
+    const header = String(req.headers.authorization ?? "")
+    const token = header.startsWith("Bearer ") ? header.slice(7) : header
+    return constantTimeEqual(token, authSecret)
   }
 
   const server = http.createServer(async (req, res) => {
@@ -143,9 +169,25 @@ export function createHttpServer(registry, pendingStore, { debug: debugFn, error
       return
     }
 
+    // Every endpoint below this line is privileged: require a loopback Host and a
+    // valid Bearer token (issue #2). Reject non-loopback sources (DNS rebinding)
+    // and unauthenticated callers (reply leak / decision theft / mode flip).
+    if (!isLoopbackHost(req)) {
+      json(403, { ok: false, error: "forbidden host" })
+      return
+    }
+    if (!authorized(req)) {
+      json(401, { ok: false, error: "unauthorized" })
+      return
+    }
+
     // SSE stream. One-way push; (re)broadcast any unclaimed/stale pending on
     // connect so a restarted instance re-discovers deliveries for its directory.
     if (req.method === "GET" && url.pathname === "/events") {
+      if (clients.size >= MAX_SSE_CLIENTS) {
+        json(429, { ok: false, error: "too many SSE clients" })
+        return
+      }
       res.writeHead(200, {
         "content-type": "text/event-stream",
         "cache-control": "no-cache",
@@ -274,7 +316,11 @@ export function createHttpServer(registry, pendingStore, { debug: debugFn, error
         json(400, { ok: false, error: "sessionID is required" })
         return
       }
-      const { alreadyPending } = registry.register(sessionID)
+      const { alreadyPending, full } = registry.register(sessionID)
+      if (full) {
+        json(429, { ok: false, error: "registry is full" })
+        return
+      }
       log(`register ${sessionID}${alreadyPending ? " (already pending)" : ""}`)
       json(200, { ok: true, alreadyPending })
       return
@@ -342,9 +388,12 @@ export async function startDaemon() {
     error("config load failed:", err.message)
   }
 
-  const registry = createRegistry()
+  const registry = createRegistry({ maxEntries: MAX_REGISTRY_ENTRIES })
   const pendingStore = createPendingStore({ claimTtlMs: config?.tuning?.claimTtlMs })
   const modeStore = createModeStore()
+  // Ensure the shared auth/signing secret exists (0600) BEFORE serving, so every
+  // endpoint is protected from the first request onward (issue #2).
+  const secret = ensureSecret()
 
   // The `/ack` handler's durable half: journal (always) + mark \Seen (best-effort,
   // only when the watcher's IMAP client is live). Detection is by UID cursor, so
@@ -353,7 +402,7 @@ export async function startDaemon() {
     await markSeenAndJournal(getWatcherClient(), folder, uid)
   }
 
-  const { server, broadcast } = createHttpServer(registry, pendingStore, { debug, error, onAck, modeStore })
+  const { server, broadcast } = createHttpServer(registry, pendingStore, { debug, error, onAck, modeStore, secret })
 
   try {
     await bindServer(server, host, port)
