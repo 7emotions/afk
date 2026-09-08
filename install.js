@@ -8,7 +8,16 @@
 // reload.
 
 import { homedir } from "node:os"
-import { existsSync, readFileSync, writeFileSync, mkdirSync, cpSync, rmSync } from "node:fs"
+import {
+  existsSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+  mkdirSync,
+  cpSync,
+  rmSync,
+  chmodSync,
+} from "node:fs"
 import { join, dirname, basename, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { execSync } from "node:child_process"
@@ -65,11 +74,29 @@ function addPluginToConfig(configPath, pluginDir) {
 }
 
 function main() {
+  // Path containment guard (issue #4, CWE-73): OPENCODE_PLUGIN_DIR is
+  // attacker-controllable (env). A poisoned value would make the `rmSync(
+  // recursive)` below delete an arbitrary directory. Require the resolved target
+  // to live under the opencode plugins dir.
+  const pluginsRoot = resolve(join(CONFIG_DIR, "plugins"))
+  const pluginDirResolved = resolve(PLUGIN_DIR)
+  if (!(pluginDirResolved === pluginsRoot || pluginDirResolved.startsWith(pluginsRoot + "/"))) {
+    fail(`refusing to install: OPENCODE_PLUGIN_DIR must be under ${pluginsRoot} (got ${pluginDirResolved})`)
+  }
+
   // 1. Copy source into the plugin dir (unless already running from there).
-  if (resolve(SRC) !== resolve(PLUGIN_DIR)) {
+  if (resolve(SRC) !== pluginDirResolved) {
+    // Defense-in-depth: never recursively delete a non-empty directory that
+    // does not look like an afk install (its package.json marker must be present).
+    if (existsSync(pluginDirResolved)) {
+      const entries = readdirSync(pluginDirResolved).filter((n) => n !== ".git")
+      if (entries.length > 0 && !existsSync(join(pluginDirResolved, "package.json"))) {
+        fail(`refusing to install: ${pluginDirResolved} exists but is not an afk install (missing package.json marker)`)
+      }
+    }
     log(`copying to ${PLUGIN_DIR}`)
-    rmSync(PLUGIN_DIR, { recursive: true, force: true })
-    cpSync(SRC, PLUGIN_DIR, {
+    rmSync(pluginDirResolved, { recursive: true, force: true })
+    cpSync(SRC, pluginDirResolved, {
       recursive: true,
       filter: (src) => !EXCLUDED.has(basename(src)),
     })
@@ -86,9 +113,15 @@ function main() {
   }
 
   // 3. Scaffold config.json from the example (never overwrite an existing one).
+  // The config holds IMAP/SMTP credentials → chmod 0600 (issue #5).
   const configPath = join(PLUGIN_DIR, "config.json")
   if (!existsSync(configPath)) {
     cpSync(join(PLUGIN_DIR, "config.example.json"), configPath)
+    try {
+      chmodSync(configPath, 0o600)
+    } catch {
+      /* best-effort */
+    }
     log(`created ${configPath}`)
     log("  >>> EDIT it and fill imap.user / imap.password / smtp.user / smtp.password / recipient")
   } else {
