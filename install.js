@@ -18,7 +18,7 @@ import {
   rmSync,
   chmodSync,
 } from "node:fs"
-import { join, dirname, basename, resolve } from "node:path"
+import { join, dirname, basename, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { execSync } from "node:child_process"
 
@@ -80,7 +80,7 @@ function main() {
   // to live under the opencode plugins dir.
   const pluginsRoot = resolve(join(CONFIG_DIR, "plugins"))
   const pluginDirResolved = resolve(PLUGIN_DIR)
-  if (!(pluginDirResolved === pluginsRoot || pluginDirResolved.startsWith(pluginsRoot + "/"))) {
+  if (!(pluginDirResolved === pluginsRoot || pluginDirResolved.startsWith(pluginsRoot + sep))) {
     fail(`refusing to install: OPENCODE_PLUGIN_DIR must be under ${pluginsRoot} (got ${pluginDirResolved})`)
   }
 
