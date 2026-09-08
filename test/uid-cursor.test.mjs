@@ -148,7 +148,7 @@ test("scanAndProcess: advances past skipped self-copy / non-token mail (no wedge
   assert.deepEqual(searchCalls[0].query, { uid: "1001:*" })
 })
 
-test("scanAndProcess: advances the cursor even when a message's fetch/parse FAILS (no wedge)", async () => {
+test("scanAndProcess: does NOT advance the cursor past a FAILED UID (retried next scan — issue #6)", async () => {
   const { client } = makeImap({ searchResult: () => [1002] })
   const cursor = makeCursor(1001)
 
@@ -160,5 +160,5 @@ test("scanAndProcess: advances the cursor even when a message's fetch/parse FAIL
   })
 
   assert.equal(res[0].ok, false)
-  assert.equal(cursor.state.value, 1002, "cursor must still advance past the failed UID")
+  assert.equal(cursor.state.value, 1001, "a failed UID must NOT advance the cursor (it is retried, never silently lost)")
 })

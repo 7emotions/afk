@@ -7,10 +7,23 @@
 // per-session poller are GONE in the PUSH architecture — the tool only registers
 // a reservation; delivery is the SSE subscriber's job.
 
-import test from "node:test"
+import { test, after } from "node:test"
 import assert from "node:assert/strict"
+import { mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 
-import { createRequestDecisionTool } from "../request-decision.js"
+// Redirect the shared secret to a throwaway temp file BEFORE importing the tool
+// (mailer.js reads the secret path at module load), so the real <store>/
+// daemon-secret is never created by these tests.
+const tmp = mkdtempSync(join(tmpdir(), "afk-rd-"))
+process.env.AFK_DAEMON_SECRET = join(tmp, "daemon-secret")
+
+const { createRequestDecisionTool } = await import("../request-decision.js")
+
+after(() => {
+  rmSync(tmp, { recursive: true, force: true })
+})
 
 // Hermetic config (never reads config.json, never real credentials).
 const config = {
@@ -73,14 +86,17 @@ function makeTool({
   return { toolDef, calls, registerCalls, releaseCalls }
 }
 
-test("subject is rewritten to [omo:<rootSessionID>] <subject>", async () => {
+test("subject is rewritten to a SIGNED [omo:<rootSessionID>.<sig>] <subject>", async () => {
   const { toolDef, calls } = makeTool()
   const result = await toolDef.execute(
     { subject: "Approve deployment?", question: "Should we deploy to prod?" },
     { sessionID: "root-1" }
   )
   assert.equal(calls.length, 1)
-  assert.equal(calls[0].mail.subject, "[omo:root-1] Approve deployment?")
+  assert.match(
+    calls[0].mail.subject,
+    /^\[omo:root-1\.[a-f0-9]{32}\] Approve deployment\?$/
+  )
   assert.match(result, /Decision requested/)
 })
 

@@ -32,16 +32,22 @@
 // 24h — decisions from dead instances must not linger forever.
 export const REGISTRY_TTL_MS = 24 * 60 * 60 * 1000
 
+// Default cap (issue #2): an unbounded registry is a local memory-exhaustion
+// DoS (the /register endpoint has no upper bound without it).
+export const DEFAULT_MAX_ENTRIES = 10_000
+
 /**
  * Create an in-memory single-outstanding-decision registry.
  *
  * @param {object} [opts]
  * @param {number} [opts.ttlMs]  Entry TTL (default REGISTRY_TTL_MS).
+ * @param {number} [opts.maxEntries]  Hard cap on live entries (default DEFAULT_MAX_ENTRIES).
  * @param {() => number} [opts.now]  Clock (default Date.now; tests inject one).
  * @returns {{register, release, has, size}}
  */
 export function createRegistry(opts = {}) {
   const ttlMs = opts.ttlMs ?? REGISTRY_TTL_MS
+  const maxEntries = opts.maxEntries ?? DEFAULT_MAX_ENTRIES
   const now = opts.now ?? (() => Date.now())
 
   // sessionID → { addedAt }
@@ -60,17 +66,22 @@ export function createRegistry(opts = {}) {
     /**
      * Register (or re-register) a session's outstanding decision.
      * @param {string} sessionID
-     * @returns {{alreadyPending: boolean}} true iff the session was already present.
+     * @returns {{alreadyPending: boolean, full: boolean}} `alreadyPending` true iff
+     *   the session was already present; `full` true iff the cap was hit and the
+     *   new entry was NOT admitted.
      */
     register(sessionID) {
       prune()
       const existing = entries.get(sessionID)
       if (existing) {
         existing.addedAt = now()
-        return { alreadyPending: true }
+        return { alreadyPending: true, full: false }
+      }
+      if (entries.size >= maxEntries) {
+        return { alreadyPending: false, full: true }
       }
       entries.set(sessionID, { addedAt: now() })
-      return { alreadyPending: false }
+      return { alreadyPending: false, full: false }
     },
 
     /** Remove an entry (idempotent). */

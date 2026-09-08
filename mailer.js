@@ -16,6 +16,9 @@
 
 import nodemailer from "nodemailer"
 
+import { signToken } from "./core/reply-parse.js"
+import { readSecret, ensureSecret } from "./store/secret.js"
+
 // Resolve the ROOT session of `startSessionID` by walking the parentID chain up
 // until a session with no parentID is found. Mirrors the lineage walk in
 // subagent-spawn-limits.ts. Throws on any failure (no data, SDK error, cycle).
@@ -42,11 +45,16 @@ export async function resolveRootSessionID(client, startSessionID, directory) {
   }
 }
 
-// Prefix an email subject with the routing token. The daemon extracts this token
-// from any incoming reply and routes it back to the stamped session, so both
-// decision emails and FYI notifications are reply-capable wake signals.
-export function stampSubject(rootSessionID, subject) {
-  return `[omo:${rootSessionID}] ${subject}`
+// Prefix an email subject with a SIGNED routing token (issue #3). The token is
+// HMAC-signed with the shared secret so a reply carrying it can be verified and
+// a forged/tampered token is rejected by the daemon. The daemon extracts the
+// session ID from any incoming reply and routes it back to the stamped session.
+// `secret` is optional (tests inject it); default: the shared secret file,
+// created on demand (first writer wins) so the plugin never blocks on the daemon.
+export function stampSubject(rootSessionID, subject, secret) {
+  const key = secret ?? readSecret() ?? ensureSecret()
+  const token = signToken(rootSessionID, key)
+  return `[omo:${token}] ${subject}`
 }
 
 // Default transport factory (nodemailer). Tests inject a fake via sendMail's

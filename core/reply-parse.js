@@ -13,17 +13,22 @@
 //   - text      : text/plain part (string | null | undefined)
 //   - html      : text/html part (string | null | undefined)
 //
-// The routing token is `[omo:<sessionID>]` where sessionID looks like `ses_...`.
-// The agent's OWN outbound email (T3) carries subject `[omo:<sid>] <subject>`
+// The routing token is `[omo:<sessionID>.<sig>]` (signed — see below).
+// The agent's OWN outbound email (T3) carries subject `[omo:…] <subject>`
 // with NO `Re:`/`回复:` prefix and NO In-Reply-To header — parseReply() must
 // reject that self-sent copy so it never round-trips into a live session.
+
+import { hmacHex, constantTimeEqual } from "../store/secret.js"
 
 // ---------------------------------------------------------------------------
 // Routing token
 // ---------------------------------------------------------------------------
 
-// Captures the session ID embedded in a `[omo:ses_...]` routing token.
-const TOKEN_RE = /\[omo:(ses_[A-Za-z0-9]+)\]/
+// Captures the session ID embedded in a `[omo:ses_...]` routing token. The
+// signed suffix `.<sig>` (issue #3) is OPTIONAL at this layer so the pure
+// extraction logic stays backward-compatible; signature VERIFICATION is a
+// separate step (verifySignedToken) performed by the processing pipeline.
+const TOKEN_RE = /\[omo:(ses_[A-Za-z0-9]+)(?:\.[a-f0-9]+)?\]/
 
 /**
  * Extract the session ID from a subject containing `[omo:ses_...]`.
@@ -34,6 +39,87 @@ export function extractToken(subject) {
   if (typeof subject !== "string") return null
   const m = subject.match(TOKEN_RE)
   return m ? m[1] : null
+}
+
+// ---------------------------------------------------------------------------
+// Signed routing token (issue #3 / #1)
+// ---------------------------------------------------------------------------
+
+// The signed token: `ses_<id>.<sig>` where
+//   sig = HMAC-SHA256(secret, "<sessionID>") truncated to 32 hex chars.
+// DETERMINISTIC (no nonce): the token is stable per session, so the human may
+// reply to ANY number of the session's emails (and reply to the same email
+// multiple times) — replay protection is intentionally NOT enforced, because
+// supplementary replies are a normal part of the workflow. The signature still
+// prevents FORGING a token for a session the attacker does not hold the secret
+// for.
+const SIG_HEX_LENGTH = 32
+const SIGNED_TOKEN_RE = new RegExp(
+  `\\[omo:(ses_[A-Za-z0-9]+)\\.([a-f0-9]{${SIG_HEX_LENGTH}})\\]`
+)
+
+/**
+ * Sign a routing token for `sessionID` under `secret`. Deterministic: the same
+ * session always yields the same token (a stable per-session routing identity).
+ * @param {string} sessionID
+ * @param {string} secret
+ * @returns {string} `ses_<id>.<sig>`
+ */
+export function signToken(sessionID, secret) {
+  return `${sessionID}.${hmacHex(sessionID, secret)}`
+}
+
+/**
+ * Parse a signed routing token out of a subject.
+ * @param {string} subject
+ * @returns {{sessionID: string, sig: string}|null} null when the subject
+ *   carries no signed token (missing sig included).
+ */
+export function parseSignedToken(subject) {
+  if (typeof subject !== "string") return null
+  const m = subject.match(SIGNED_TOKEN_RE)
+  return m ? { sessionID: m[1], sig: m[2] } : null
+}
+
+/**
+ * Verify a subject's routing-token signature against `secret`.
+ * False when the token is missing/unsigned OR the signature does not match
+ * (a tampered session ID or a forged token).
+ * @param {string} subject
+ * @param {string} secret
+ * @returns {boolean}
+ */
+export function verifySignedToken(subject, secret) {
+  const token = parseSignedToken(subject)
+  if (!token || !secret) return false
+  const expected = hmacHex(token.sessionID, secret)
+  return constantTimeEqual(token.sig, expected)
+}
+
+// ---------------------------------------------------------------------------
+// Sender authentication (SPF/DKIM/DMARC — issue #1)
+// ---------------------------------------------------------------------------
+
+/**
+ * Detect a FAILED sender-authentication result from the provider's
+ * `Authentication-Results` headers (mailparser exposes them as
+ * `authenticationResults: [{ value: "…; dkim=fail …; spf=fail …; dmarc=fail …" }]`).
+ *
+ * A forged `From:` address that fails SPF/DKIM/DMARC is rejected here — this is
+ * the real defence against allow-list bypass (issue #1): the allow-list matches
+ * the forged address, but the provider's own auth headers prove the sender is
+ * not who they claim to be.
+ *
+ * @param {Array<{value?: string}>|undefined} authenticationResults
+ * @returns {boolean} true when any header reports dkim/spf/dmarc = fail.
+ */
+export function authenticationFailed(authenticationResults) {
+  if (!Array.isArray(authenticationResults)) return false
+  for (const entry of authenticationResults) {
+    const value = String(entry && entry.value ? entry.value : "")
+    if (/\b(?:dkim|spf|dmarc)=fail\b/i.test(value)) return true
+  }
+  return false
 }
 
 // ---------------------------------------------------------------------------

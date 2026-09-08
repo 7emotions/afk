@@ -32,9 +32,14 @@
 // pending is re-broadcast on the next instance connect — no loss.
 
 import { simpleParser } from "mailparser"
-import { parseReply } from "./reply-parse.js"
+import {
+  parseReply,
+  verifySignedToken,
+  authenticationFailed,
+} from "./reply-parse.js"
 import { injectReply, isJournaled } from "./inject.js"
 import { getCursor, initCursor, advanceCursor } from "../store/uid-cursor.js"
+import { readSecret } from "../store/secret.js"
 
 // Default cursor ops (real file-backed uid-cursor.js). Tests inject an in-memory
 // fake via `deps.cursor` to avoid file I/O and cross-test state.
@@ -52,6 +57,13 @@ function debug(...args) {
 
 function error(...args) {
   console.error("[afk:process:error]", ...args)
+}
+
+// Audit log — emitted on every rejected reply (bad token, replay, failed sender
+// auth, disallowed sender). ALWAYS logs (not gated by AFK_DEBUG): issue #1's
+// regression requires a forged/suspicious reply to leave an audit trail.
+function audit(...args) {
+  console.error("[afk:audit]", ...args)
 }
 
 /**
@@ -77,6 +89,9 @@ export function toStructuredEmail(parsed) {
     inReplyTo: typeof parsed?.inReplyTo === "string" ? parsed.inReplyTo : null,
     text: typeof parsed?.text === "string" ? parsed.text : null,
     html: typeof parsed?.html === "string" ? parsed.html : null,
+    authenticationResults: Array.isArray(parsed?.authenticationResults)
+      ? parsed.authenticationResults
+      : [],
   }
 }
 
@@ -109,6 +124,11 @@ export async function processMail(imapClient, client, config, uid, deps = {}) {
   const journaled = deps.isJournaled ?? isJournaled
   const debugFn = deps.debug ?? deps.log ?? debug
   const errorFn = deps.error ?? deps.log ?? error
+  const auditFn = deps.audit ?? audit
+  // The daemon ensures the secret exists BEFORE the watcher starts (startDaemon),
+  // so here we only READ it — and fail closed (empty secret → every token is
+  // rejected) rather than creating files as a side effect of parsing.
+  const secret = deps.secret ?? readSecret() ?? ""
 
   const id = String(uid)
 
@@ -143,12 +163,31 @@ export async function processMail(imapClient, client, config, uid, deps = {}) {
     return { uid, ok: false, error: `parse: ${message}` }
   }
 
-  const reply = parseReply(toStructuredEmail(parsed))
+  const structured = toStructuredEmail(parsed)
+  const reply = parseReply(structured)
   if (!reply) {
     // Subject contained "[omo:" but it is not a decision reply (e.g. the
     // agent's own outbound copy, or a malformed token). Nothing to persist.
     debugFn(`uid ${id}: not a decision reply (self-copy or malformed) — leaving unseen`)
     return { uid, ok: true, skipped: true }
+  }
+
+  // Signed-token verification (issue #3 / #1): an unsigned, tampered, or forged
+  // routing token is rejected BEFORE any sender check. A stranger who copied a
+  // plaintext session ID (or guessed one) cannot produce a valid HMAC. The token
+  // is deterministic per session, so any number of (supplementary) replies to a
+  // session's emails is accepted — replay is intentionally NOT rejected.
+  if (!verifySignedToken(structured.subject, secret)) {
+    auditFn(`uid ${id}: invalid/unsigned routing token for ${reply.sessionID} — rejected`)
+    return { uid, ok: true, skipped: true, reason: "bad-token" }
+  }
+
+  // Sender authentication (issue #1): a reply whose provider `Authentication-
+  // Results` header reports dkim/spf/dmarc=fail has a forged `From:` — reject
+  // even when the (forged) address happens to be in the allow-list.
+  if (authenticationFailed(structured.authenticationResults)) {
+    auditFn(`uid ${id}: sender auth failed (SPF/DKIM/DMARC) for ${reply.from} — rejected`)
+    return { uid, ok: true, skipped: true, reason: "sender-auth-failed" }
   }
 
   // Sender allow-list guard (prompt-injection protection): only replies FROM a
@@ -158,6 +197,7 @@ export async function processMail(imapClient, client, config, uid, deps = {}) {
   const allowList = Array.isArray(config.allowList) ? config.allowList : []
   if (allowList.length > 0 && !allowList.includes(sender)) {
     debugFn(`uid ${id}: sender ${sender} not in allowList — ignoring`)
+    auditFn(`uid ${id}: sender ${sender} not in allowList — rejected`)
     return { uid, ok: true, skipped: true, reason: "sender-not-allowed" }
   }
 
@@ -246,15 +286,29 @@ export async function scanAndProcess(imapClient, client, config, deps = {}) {
   const highest = Math.max(...uids.map(Number))
   debugFn(`scan found ${uids.length} message(s) with UID > ${cursor} (highest ${highest})`)
 
+  // Process in ascending UID order. The cursor advances ONLY past UIDs that
+  // were fully handled (ok:true — persisted or deliberately skipped); a FAILED
+  // UID (ok:false: fetch/parse/persist error) stops the scan so it is retried on
+  // the next pass rather than being silently skipped (issue #6). A self-copy /
+  // non-token / disallowed mail returns ok:true (skipped) and still advances.
+  const ordered = [...uids].sort((a, b) => Number(a) - Number(b))
   const results = []
-  for (const uid of uids) {
-    results.push(await processMail(imapClient, client, config, uid, deps))
+  let lastOk = cursor
+  for (const uid of ordered) {
+    const result = await processMail(imapClient, client, config, uid, deps)
+    results.push(result)
+    if (result && result.ok === true) {
+      lastOk = Number(uid)
+    } else {
+      debugFn(`uid ${uid} failed — stopping scan; cursor stays at ${lastOk} for retry`)
+      break
+    }
   }
 
-  // Advance past the highest UID SEEN, regardless of whether each message was
-  // processed or skipped — so a self-copy / non-token mail cannot wedge it.
-  cursorOps.advance(highest, imapClient.mailbox?.uidValidity)
-  debugFn(`advanced UID cursor to ${highest}`)
+  if (lastOk !== cursor) {
+    cursorOps.advance(lastOk, imapClient.mailbox?.uidValidity)
+    debugFn(`advanced UID cursor to ${lastOk}`)
+  }
 
   return results
 }

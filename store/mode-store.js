@@ -17,7 +17,7 @@
 // AFK_LAST_UID / AFK_PENDING; tests use it to keep the real file
 // clean).
 
-import { existsSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, readFileSync, writeFileSync, chmodSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
 
@@ -54,7 +54,12 @@ export function createModeStore(opts = {}) {
   let mode = load(path)
 
   function persist() {
-    writeFileSync(path, JSON.stringify({ mode }, null, 2) + "\n", "utf8")
+    writeFileSync(path, JSON.stringify({ mode }, null, 2) + "\n", { encoding: "utf8", mode: 0o600 })
+    try {
+      chmodSync(path, 0o600)
+    } catch {
+      /* best-effort */
+    }
   }
 
   return {

@@ -11,7 +11,7 @@
 //
 // No IMAP fetch/search (T5), no reply parsing (T6), no SMTP. Node ESM, no deps.
 
-import { existsSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, readFileSync, writeFileSync, chmodSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
 
@@ -176,5 +176,10 @@ function appendJournal(uid) {
   const id = String(uid)
   if (arr.includes(id)) return
   arr.push(id)
-  writeFileSync(JOURNAL_PATH, JSON.stringify(arr, null, 2) + "\n", "utf8")
+  writeFileSync(JOURNAL_PATH, JSON.stringify(arr, null, 2) + "\n", { encoding: "utf8", mode: 0o600 })
+  try {
+    chmodSync(JOURNAL_PATH, 0o600)
+  } catch {
+    /* best-effort */
+  }
 }

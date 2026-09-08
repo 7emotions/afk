@@ -26,6 +26,7 @@ const {
 } = await import("../core/process.js")
 const { markSeenAndJournal, isJournaled } = await import("../core/inject.js")
 const { createPendingStore } = await import("../store/pending-store.js")
+const { signToken } = await import("../core/reply-parse.js")
 
 after(() => {
   rmSync(tmp, { recursive: true, force: true })
@@ -39,9 +40,13 @@ function readJournal() {
   }
 }
 
-// A mailparser-shaped ParsedMail for the mocked-parse tests.
+// Hermetic token secret so the real daemon-secret file is never touched by tests.
+const TEST_SECRET = "test-secret"
+
+// A mailparser-shaped ParsedMail for the mocked-parse tests. The subject carries
+// a VALID signed token (issue #3) so the pipeline reaches the persist seam.
 const PARSED_REPLY = {
-  subject: "Re: [omo:ses_x] hello",
+  subject: `Re: [omo:${signToken("ses_x", TEST_SECRET)}] hello`,
   from: { value: [{ address: "human@example.com", name: "Human" }], text: '"Human" <human@example.com>' },
   inReplyTo: "<abc@example.com>",
   text: "go ahead and deploy",
@@ -81,13 +86,12 @@ function makeMocks({ promptThrow = null } = {}) {
 
 test("toStructuredEmail: maps mailparser output into reply-parse's input contract", () => {
   const s = toStructuredEmail(PARSED_REPLY)
-  assert.deepEqual(s, {
-    subject: "Re: [omo:ses_x] hello",
-    from: "human@example.com",
-    inReplyTo: "<abc@example.com>",
-    text: "go ahead and deploy",
-    html: null,
-  })
+  assert.equal(s.subject, PARSED_REPLY.subject)
+  assert.equal(s.from, "human@example.com")
+  assert.equal(s.inReplyTo, "<abc@example.com>")
+  assert.equal(s.text, "go ahead and deploy")
+  assert.equal(s.html, null)
+  assert.deepEqual(s.authenticationResults, [], "no Authentication-Results headers → empty array")
 })
 
 test("toStructuredEmail: html:false → null, missing from → ''", () => {
@@ -106,6 +110,7 @@ test("toStructuredEmail: html:false → null, missing from → ''", () => {
 test("processMail: fetch→parse→persist in order (NO ack — \Seen/journal moved to /ack)", async () => {
   const { imapClient, client, events } = makeMocks()
   const deps = {
+    secret: TEST_SECRET,
     parse: async (source) => {
       assert.ok(Buffer.isBuffer(source), "parser must receive the raw source Buffer")
       events.push("parse")
@@ -135,7 +140,7 @@ test("processMail: skips UID already journaled (no fetch, no inject)", async () 
     throw new Error("must not be called")
   }
 
-  const res = await processMail(imapClient, client, { folder: "INBOX" }, 2001, { parse: async () => PARSED_REPLY })
+  const res = await processMail(imapClient, client, { folder: "INBOX" }, 2001, { secret: TEST_SECRET, parse: async () => PARSED_REPLY })
 
   assert.equal(res.ok, true)
   assert.equal(res.skipped, true)
@@ -151,6 +156,7 @@ test("processMail: persist {ok:false} leaves message UNSEEN (no flag-mark, no jo
   }
 
   const res = await processMail(imapClient, client, { folder: "INBOX" }, 3001, {
+    secret: TEST_SECRET,
     parse: async () => PARSED_REPLY,
     injectReply: async () => ({ ok: false, error: "store write failed" }),
   })
@@ -162,10 +168,12 @@ test("processMail: persist {ok:false} leaves message UNSEEN (no flag-mark, no jo
 })
 
 test("processMail: real parse persists only (no flags)", async () => {
+  const signedSubject = `Re: [omo:${signToken("ses_test", TEST_SECRET)}] hello`
+  const encodedSubject = `=?utf-8?B?${Buffer.from(signedSubject, "utf8").toString("base64")}?=`
   const raw = [
     "From: \"Human\" <human@example.com>",
     "To: agent@qq.com",
-    "Subject: =?utf-8?B?UmU6IFtvbW86c2VzX3Rlc3RdIGhlbGxv?=",
+    `Subject: ${encodedSubject}`,
     "In-Reply-To: <abc@example.com>",
     "Message-ID: <xyz@example.com>",
     "MIME-Version: 1.0",
@@ -197,7 +205,7 @@ test("processMail: real parse persists only (no flags)", async () => {
     },
   }
 
-  const res = await processMail(imapClient, client, { folder: "INBOX" }, 4001)
+  const res = await processMail(imapClient, client, { folder: "INBOX" }, 4001, { secret: TEST_SECRET })
 
   assert.equal(res.ok, true)
   assert.equal(res.sessionID, "ses_test")
@@ -206,10 +214,12 @@ test("processMail: real parse persists only (no flags)", async () => {
 })
 
 test("processMail: a '/new <task>' reply passes command='new' + stripped task to the persist seam", async () => {
+  const signedSubject = `Re: [omo:${signToken("ses_test", TEST_SECRET)}] hello`
+  const encodedSubject = `=?utf-8?B?${Buffer.from(signedSubject, "utf8").toString("base64")}?=`
   const raw = [
     "From: \"Human\" <human@example.com>",
     "To: agent@qq.com",
-    "Subject: =?utf-8?B?UmU6IFtvbW86c2VzX3Rlc3RdIGhlbGxv?=",
+    `Subject: ${encodedSubject}`,
     "In-Reply-To: <abc@example.com>",
     "Message-ID: <xyz@example.com>",
     "MIME-Version: 1.0",
@@ -230,6 +240,7 @@ test("processMail: a '/new <task>' reply passes command='new' + stripped task to
     folder: "INBOX",
     allowList: ["human@example.com"],
   }, 4100, {
+    secret: TEST_SECRET,
     injectReply: async (_c, args) => {
       captured = args
       return { ok: true }
@@ -261,6 +272,7 @@ test("P0 regression: parse persists (no \Seen, no journal); crash→restart re-d
   const store = createPendingStore({ path: pendingPath })
   const broadcasts = []
   const deps = {
+    secret: TEST_SECRET,
     parse: async () => PARSED_REPLY,
     injectReply: async (_c, { sessionID, body, from, uid }) => {
       const { created, entry } = store.add({ uid, sessionID, body, from })
@@ -352,6 +364,7 @@ test("scanAndProcess: processes each UID in the window and advances the cursor p
 
   const res = await scanAndProcess(imapClient, client, { folder: "INBOX" }, {
     cursor,
+    secret: TEST_SECRET,
     parse: async () => PARSED_REPLY,
   })
 
@@ -369,6 +382,7 @@ test("scanAndProcess: processes each UID in the window and advances the cursor p
 test("processMail: sender in allowList → persists the reply", async () => {
   const { imapClient, client } = makeMocks()
   const res = await processMail(imapClient, client, { folder: "INBOX", allowList: ["human@example.com"] }, 6001, {
+    secret: TEST_SECRET,
     parse: async () => PARSED_REPLY,
   })
   assert.equal(res.ok, true)
@@ -378,6 +392,7 @@ test("processMail: sender in allowList → persists the reply", async () => {
 test("processMail: sender NOT in allowList → skipped (prompt-injection guard)", async () => {
   const { imapClient, client } = makeMocks()
   const res = await processMail(imapClient, client, { folder: "INBOX", allowList: ["attacker@evil.com"] }, 6002, {
+    secret: TEST_SECRET,
     parse: async () => PARSED_REPLY,
   })
   assert.equal(res.ok, true)
