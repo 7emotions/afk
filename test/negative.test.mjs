@@ -27,10 +27,13 @@ const tmp = mkdtempSync(join(tmpdir(), "afk-negative-"))
 process.env.AFK_JOURNAL = join(tmp, "journal.json")
 
 const { processMail } = await import("../core/process.js")
+const { signToken } = await import("../core/reply-parse.js")
 
 after(() => {
   rmSync(tmp, { recursive: true, force: true })
 })
+
+const TEST_SECRET = "test-secret"
 
 // Read the (redirected) journal tolerantly: a failed injection never acks, so
 // the journal file may not exist yet — treat a missing file as an empty array
@@ -43,9 +46,9 @@ function readJournal() {
   }
 }
 
-// A mailparser-shaped ParsedMail for the mocked-parse tests.
+// A mailparser-shaped ParsedMail for the mocked-parse tests (valid signed token).
 const PARSED_REPLY = {
-  subject: "Re: [omo:ses_x] hello",
+  subject: `Re: [omo:${signToken("ses_x", TEST_SECRET)}] hello`,
   from: { value: [{ address: "human@example.com", name: "Human" }], text: '"Human" <human@example.com>' },
   inReplyTo: "<abc@example.com>",
   text: "go ahead and deploy",
@@ -70,6 +73,7 @@ test("negative: inject {ok:false} (session gone) leaves message UNSEEN — no ac
   const client = { session: { promptAsync: async () => {} } }
 
   const res = await processMail(imapClient, client, { folder: "INBOX" }, 3001, {
+    secret: TEST_SECRET,
     parse: async () => PARSED_REPLY,
     // A failed persistence/injection surfaces as {ok:false}. processMail never
     // acks (no \Seen, no journal), so the message stays UNSEEN for a later scan.
@@ -106,6 +110,7 @@ test("negative: duplicate UID delivery is processed once — journal dedupe shor
   const client = { session: { promptAsync: async () => {} } }
 
   const res = await processMail(imapClient, client, { folder: "INBOX" }, 4001, {
+    secret: TEST_SECRET,
     parse: async () => PARSED_REPLY,
     injectReply: async () => {
       injectCalls++

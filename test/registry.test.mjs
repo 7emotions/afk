@@ -15,13 +15,27 @@ import { createRegistry, REGISTRY_TTL_MS } from "../store/registry.js"
 test("register reserves a session → alreadyPending false, then true on repeat", () => {
   const reg = createRegistry()
   const first = reg.register("ses_1")
-  assert.deepEqual(first, { alreadyPending: false })
+  assert.deepEqual(first, { alreadyPending: false, full: false })
   assert.equal(reg.has("ses_1"), true)
   assert.equal(reg.size(), 1)
 
   const second = reg.register("ses_1")
-  assert.deepEqual(second, { alreadyPending: true })
+  assert.deepEqual(second, { alreadyPending: true, full: false })
   assert.equal(reg.size(), 1, "re-register must not create a second entry")
+})
+
+test("register refuses new entries at the cap (full:true) but refreshes existing ones", () => {
+  const reg = createRegistry({ maxEntries: 2 })
+  reg.register("ses_a")
+  reg.register("ses_b")
+  assert.equal(reg.size(), 2)
+
+  const third = reg.register("ses_c")
+  assert.deepEqual(third, { alreadyPending: false, full: true })
+  assert.equal(reg.size(), 2, "a full registry must not admit a new entry")
+
+  // Re-registering an existing entry at the cap still works.
+  assert.deepEqual(reg.register("ses_a"), { alreadyPending: true, full: false })
 })
 
 test("has returns false for an unknown session", () => {

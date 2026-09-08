@@ -6,10 +6,21 @@
 // register/release deps (it occupies no single-outstanding-decision slot), so
 // there is nothing HTTP to mock — only the mode gate, which is injected.
 
-import test from "node:test"
+import { test, after } from "node:test"
 import assert from "node:assert/strict"
+import { mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 
-import { createNotifyUserTool } from "../notify.js"
+// Redirect the shared secret to a throwaway temp file BEFORE importing the tool.
+const tmp = mkdtempSync(join(tmpdir(), "afk-notify-"))
+process.env.AFK_DAEMON_SECRET = join(tmp, "daemon-secret")
+
+const { createNotifyUserTool } = await import("../notify.js")
+
+after(() => {
+  rmSync(tmp, { recursive: true, force: true })
+})
 
 // Hermetic config (never reads config.json, never real credentials).
 const config = {
@@ -57,14 +68,14 @@ function makeTool({ transport = "ok", getMode = undefined } = {}) {
   return { toolDef, calls }
 }
 
-test("subject is stamped [omo:<rootSessionID>] and body carries message + reply hint", async () => {
+test("subject is stamped [omo:<rootSessionID>.<sig>] and body carries message + reply hint", async () => {
   const { toolDef, calls } = makeTool()
   const result = await toolDef.execute(
     { subject: "Reactor done", message: "重构完成，95/95 测试通过" },
     { sessionID: "root-1" }
   )
   assert.equal(calls.length, 1)
-  assert.equal(calls[0].mail.subject, "[omo:root-1] Reactor done")
+  assert.match(calls[0].mail.subject, /^\[omo:root-1\.[a-f0-9]{32}\] Reactor done$/)
   assert.equal(
     calls[0].mail.text,
     "重构完成，95/95 测试通过\n\nReply to this email to send feedback to the running session."

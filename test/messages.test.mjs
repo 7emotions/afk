@@ -10,11 +10,25 @@
 //
 // No network, no IMAP/SMTP, no live opencode.
 
-import { test } from "node:test"
+import { test, after } from "node:test"
 import assert from "node:assert/strict"
+import { mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 
 import { DEFAULT_MESSAGES, loadMessages } from "../messages.js"
-import { createRequestDecisionTool } from "../request-decision.js"
+
+// Redirect the shared secret to a temp file BEFORE importing the tool (its
+// mailer reads the secret path at module load), so stampSubject never creates
+// the real <store>/daemon-secret.
+const tmp = mkdtempSync(join(tmpdir(), "afk-messages-"))
+process.env.AFK_DAEMON_SECRET = join(tmp, "daemon-secret")
+
+const { createRequestDecisionTool } = await import("../request-decision.js")
+
+after(() => {
+  rmSync(tmp, { recursive: true, force: true })
+})
 
 test("DEFAULT_MESSAGES is English (default language)", () => {
   assert.equal(DEFAULT_MESSAGES.decisionBody.context, "Context:")

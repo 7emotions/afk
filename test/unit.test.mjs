@@ -14,13 +14,25 @@
 //
 // No network, no IMAP/SMTP, no live opencode server.
 
-import { test } from "node:test"
+import { test, after } from "node:test"
 import assert from "node:assert/strict"
 import { simpleParser } from "mailparser"
+import { mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 
-import { createRequestDecisionTool } from "../request-decision.js"
-import { extractToken, parseReply } from "../core/reply-parse.js"
-import { toStructuredEmail } from "../core/process.js"
+// Redirect the shared secret to a throwaway temp file BEFORE importing the
+// modules that read it (mailer/secret).
+const tmp = mkdtempSync(join(tmpdir(), "afk-unit-"))
+process.env.AFK_DAEMON_SECRET = join(tmp, "daemon-secret")
+
+const { createRequestDecisionTool } = await import("../request-decision.js")
+const { extractToken, parseReply } = await import("../core/reply-parse.js")
+const { toStructuredEmail } = await import("../core/process.js")
+
+after(() => {
+  rmSync(tmp, { recursive: true, force: true })
+})
 
 // ---------------------------------------------------------------------------
 // 1. Subject-token round-trip (request_decision stamp ↔ reply-parse extract)
@@ -66,7 +78,7 @@ test("round-trip: request_decision stamps [omo:<rootSessionID>] that reply-parse
     { sessionID: "ses_root123" }
   )
   assert.match(res, /Decision requested/)
-  assert.equal(stampedSubject, "[omo:ses_root123] Approve deployment?")
+  assert.match(stampedSubject, /^\[omo:ses_root123\.[a-f0-9]{32}\] Approve deployment\?$/)
 
   // reply-parse must recover the very same token request_decision stamped, from
   // the human's reply.
