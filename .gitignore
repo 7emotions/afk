@@ -4,5 +4,6 @@ journal.json
 last-uid.json
 pending.json
 mode.json
+daemon-secret
 
 .omo/
