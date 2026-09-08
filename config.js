@@ -12,7 +12,7 @@
 //      config dir is never wiped.
 //   4. <plugin dir>/config.json — legacy fallback (source installs, tests)
 
-import { existsSync, readFileSync } from "node:fs"
+import { existsSync, readFileSync, statSync } from "node:fs"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -123,6 +123,19 @@ export function loadConfig(options = {}) {
   const userPath = userConfigPath(env)
   const path =
     options.path ?? env.AFK_CONFIG ?? (existsSync(userPath) ? userPath : DEFAULT_CONFIG_PATH)
+
+  // Permission guard (issue #5): the config holds IMAP/SMTP credentials. Warn
+  // (do not block) when it is group/other-readable so the operator can tighten it.
+  try {
+    const mode = statSync(path).mode & 0o777
+    if (mode & 0o077) {
+      console.error(
+        `[afk] WARNING: config file ${path} is group/other-readable (mode ${mode.toString(8)}); credentials may be exposed — run: chmod 600 "${path}"`
+      )
+    }
+  } catch {
+    /* stat may fail when the file is missing — the read below surfaces the real error */
+  }
 
   let raw
   try {

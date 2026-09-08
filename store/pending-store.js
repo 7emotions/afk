@@ -27,7 +27,7 @@
 // journal (inject.js) and this store consistent regardless of whether the UID
 // arrived as a number (IMAP search) or a string (JSON over HTTP).
 
-import { existsSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, readFileSync, writeFileSync, chmodSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
 
@@ -104,6 +104,11 @@ export function createPendingStore(opts = {}) {
 
   function persist() {
     writeFileSync(path, JSON.stringify([...items.values()], null, 2) + "\n", "utf8")
+    try {
+      chmodSync(path, 0o600)
+    } catch {
+      /* best-effort */
+    }
   }
 
   // True when a claim is held by a different instance but is old enough to steal.

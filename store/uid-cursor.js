@@ -18,7 +18,7 @@
 // No IMAP, no network — pure fs. Mirrors inject.js's journal convention
 // (AFK_LAST_UID env override, in-memory cache, tolerant read).
 
-import { existsSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, readFileSync, writeFileSync, chmodSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
 
@@ -60,6 +60,11 @@ function load() {
 function write(state) {
   cursorCache = state
   writeFileSync(CURSOR_PATH, JSON.stringify(state, null, 2) + "\n", "utf8")
+  try {
+    chmodSync(CURSOR_PATH, 0o600)
+  } catch {
+    /* best-effort */
+  }
 }
 
 // Monotonic set: anchor or advance the cursor to `lastUid` for `uidValidity`.
