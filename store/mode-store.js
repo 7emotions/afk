@@ -54,7 +54,7 @@ export function createModeStore(opts = {}) {
   let mode = load(path)
 
   function persist() {
-    writeFileSync(path, JSON.stringify({ mode }, null, 2) + "\n", "utf8")
+    writeFileSync(path, JSON.stringify({ mode }, null, 2) + "\n", { encoding: "utf8", mode: 0o600 })
     try {
       chmodSync(path, 0o600)
     } catch {

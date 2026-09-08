@@ -176,7 +176,7 @@ function appendJournal(uid) {
   const id = String(uid)
   if (arr.includes(id)) return
   arr.push(id)
-  writeFileSync(JOURNAL_PATH, JSON.stringify(arr, null, 2) + "\n", "utf8")
+  writeFileSync(JOURNAL_PATH, JSON.stringify(arr, null, 2) + "\n", { encoding: "utf8", mode: 0o600 })
   try {
     chmodSync(JOURNAL_PATH, 0o600)
   } catch {

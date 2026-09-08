@@ -59,7 +59,7 @@ function load() {
 
 function write(state) {
   cursorCache = state
-  writeFileSync(CURSOR_PATH, JSON.stringify(state, null, 2) + "\n", "utf8")
+  writeFileSync(CURSOR_PATH, JSON.stringify(state, null, 2) + "\n", { encoding: "utf8", mode: 0o600 })
   try {
     chmodSync(CURSOR_PATH, 0o600)
   } catch {

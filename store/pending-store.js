@@ -103,7 +103,7 @@ export function createPendingStore(opts = {}) {
   const items = load(path)
 
   function persist() {
-    writeFileSync(path, JSON.stringify([...items.values()], null, 2) + "\n", "utf8")
+    writeFileSync(path, JSON.stringify([...items.values()], null, 2) + "\n", { encoding: "utf8", mode: 0o600 })
     try {
       chmodSync(path, 0o600)
     } catch {
