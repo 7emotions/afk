@@ -7,7 +7,7 @@
 
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { chmodSync, mkdtempSync, writeFileSync } from "node:fs"
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -19,8 +19,9 @@ test("AFK_NODE_BIN override wins over PATH and process.execPath (issue #10)", ()
   assert.equal(resolveNodeBin({ AFK_NODE_BIN: "/custom/node", PATH: "" }), "/custom/node")
 })
 
-test("resolves `node` from PATH when AFK_NODE_BIN is unset (issue #10)", () => {
+test("resolves `node` from PATH when AFK_NODE_BIN is unset (issue #10)", (t) => {
   const dir = mkdtempSync(join(tmpdir(), "afk-node-"))
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
   const fakeNode = join(dir, EXE)
   writeFileSync(fakeNode, process.platform === "win32" ? "" : "#!/bin/sh\n")
   chmodSync(fakeNode, 0o755)
