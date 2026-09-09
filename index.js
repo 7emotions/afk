@@ -19,7 +19,8 @@
 //        POSTs /register {sessionID} (the single-outstanding-decision guard).
 
 import { spawn } from "node:child_process"
-import { dirname, join } from "node:path"
+import { accessSync, constants as fsConstants } from "node:fs"
+import { delimiter, dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { setTimeout as sleep } from "node:timers/promises"
 
@@ -105,15 +106,60 @@ async function probeHealth(url, timeoutMs = DAEMON_PROBE_TIMEOUT_MS) {
   }
 }
 
+// Resolve the JS runtime used to launch the detached daemon (issue #10).
+//
+// `process.execPath` is NOT always a JS interpreter. When opencode ships as a
+// compiled standalone binary, `process.execPath` is that binary and it will NOT
+// execute `daemon.js` — it treats the first positional arg as a working
+// directory and exits immediately ("Failed to change directory"), silently
+// killing the daemon. Resolve in order of trust:
+//   1. AFK_NODE_BIN  — explicit override (user points at a working Node).
+//   2. `node` on PATH — the reliable runtime when opencode is a compiled binary.
+//   3. process.execPath — fallback for source/bun runs, where it IS a runtime.
+function resolveNodeBin(env = process.env) {
+  if (env.AFK_NODE_BIN) return env.AFK_NODE_BIN
+  if (env.PATH) {
+    const exe = process.platform === "win32" ? "node.exe" : "node"
+    for (const dir of env.PATH.split(delimiter)) {
+      if (!dir) continue
+      const candidate = join(dir, exe)
+      try {
+        accessSync(candidate, fsConstants.X_OK)
+        return candidate
+      } catch {
+        /* not executable here — keep looking */
+      }
+    }
+  }
+  return process.execPath
+}
+
 // Spawn a detached daemon process with a MINIMAL env whitelist (issue #8): the
 // full opencode env (ANTHROPIC_API_KEY + AFK_* credentials) must not leak into
 // a detached, long-lived process. Only ONE wins the bind (atomic single-
 // instance); a loser exits quietly on EADDRINUSE.
 function spawnDaemon(env = process.env) {
-  const child = spawn(process.execPath, [DAEMON_PATH], {
+  const nodeBin = resolveNodeBin(env)
+  const child = spawn(nodeBin, [DAEMON_PATH], {
     detached: true,
     stdio: "ignore",
     env: daemonEnv(env),
+  })
+  // Observability (issue #10): a failed or early-exiting daemon used to be
+  // silent — `stdio: "ignore"` hid the child's stderr and the 15s /health poll
+  // swallowed the cause. Surface spawn errors and abnormal exits so a runtime-
+  // resolution or bind failure is diagnosable instead of "daemon unreachable".
+  child.on("error", (err) => {
+    console.error(`[afk] daemon spawn failed (runtime: ${nodeBin}):`, err.message)
+  })
+  child.on("exit", (code, signal) => {
+    if (code !== 0 || signal) {
+      console.error(
+        `[afk] daemon exited early (runtime: ${nodeBin}, code=${code}, signal=${signal ?? "none"})`
+      )
+    } else if (debugEnabled()) {
+      console.error(`[afk] daemon exited (code=0)`)
+    }
   })
   child.unref()
   return child
@@ -334,6 +380,6 @@ const server = async (input, _options) => {
   }
 }
 
-export { resolveDaemonUrl, probeHealth, spawnDaemon, ensureDaemon, daemonEnv }
+export { resolveDaemonUrl, probeHealth, resolveNodeBin, spawnDaemon, ensureDaemon, daemonEnv }
 
 export default { id: "afk", server }

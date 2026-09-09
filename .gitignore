@@ -7,3 +7,4 @@ mode.json
 daemon-secret
 
 .omo/
+.worktrees/
