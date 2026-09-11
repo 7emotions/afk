@@ -63,6 +63,14 @@ test("ensureStateDir creates the state dir 0700 and is idempotent", () => {
   assert.equal(statSync(join(base, "opencode", "afk")).mode & 0o777, 0o700)
 })
 
+test("ensureStateDir chmods an EXISTING dir to 0700 (FIX #2)", () => {
+  const base = join(tmp, `ens-${Math.random().toString(36).slice(2)}`)
+  const dir = join(base, "opencode", "afk")
+  mkdirSync(dir, { recursive: true, mode: 0o755 }) // pre-existing, looser perms
+  ensureStateDir({ XDG_STATE_HOME: base })
+  assert.equal(statSync(dir).mode & 0o777, 0o700, "existing dir must be tightened to 0700")
+})
+
 // ---------------------------------------------------------------------------
 // migrateLegacyState — hermetic fixture (see header comment)
 // ---------------------------------------------------------------------------
@@ -72,10 +80,13 @@ const legacyStore = join(legacyRoot, "store")
 const legacyCore = join(legacyRoot, "core")
 mkdirSync(legacyStore, { recursive: true })
 mkdirSync(legacyCore, { recursive: true })
-copyFileSync(join(__dirname, "..", "store", "paths.js"), join(legacyStore, "paths.js"))
+
+// Copy as paths.mjs: outside package.json's "type":"module" scope, a .js copy
+// would be treated as CommonJS (Node < 22.7) and the import below would fail.
+copyFileSync(join(__dirname, "..", "store", "paths.js"), join(legacyStore, "paths.mjs"))
 
 // Import the copy so its __dirname == legacyStore.
-const paths = await import(pathToFileURL(join(legacyStore, "paths.js")).href)
+const paths = await import(pathToFileURL(join(legacyStore, "paths.mjs")).href)
 
 const LEGACY = {
   "daemon-secret": "SECRET-1",
@@ -151,5 +162,35 @@ test("an AFK_* override skips that file (AFK_MODE → no mode.json in the state 
   // The other 4 may still migrate.
   for (const name of ["daemon-secret", "last-uid.json", "pending.json", "journal.json"]) {
     assert.equal(readFileSync(join(dir, name), "utf8"), LEGACY[name], `${name} must migrate`)
+  }
+})
+
+test("an EMPTY AFK_* override does NOT skip migration (FIX #5)", () => {
+  const stateRoot = freshState()
+  seedLegacy()
+  // AFK_MODE="" is falsy — consumers fall back to the state-dir default, so
+  // the legacy file must still be migrated.
+  paths.migrateLegacyState({ XDG_STATE_HOME: stateRoot, AFK_MODE: "" })
+  const dir = migratedDir(stateRoot)
+  assert.equal(readFileSync(join(dir, "mode.json"), "utf8"), LEGACY["mode.json"], "empty override must not skip")
+})
+
+test("migrateLegacyState(env, legacyStoreDir) migrates from an explicit legacy dir (FIX #1)", () => {
+  const stateRoot = freshState()
+  // A second legacy layout, independent of the module copy's __dirname.
+  const root = join(tmp, `legacy2-${Math.random().toString(36).slice(2)}`)
+  const explicitStore = join(root, "store")
+  const explicitCore = join(root, "core")
+  mkdirSync(explicitStore, { recursive: true })
+  mkdirSync(explicitCore, { recursive: true })
+  for (const name of ["daemon-secret", "mode.json", "last-uid.json", "pending.json"]) {
+    writeFileSync(join(explicitStore, name), LEGACY[name])
+  }
+  writeFileSync(join(explicitCore, "journal.json"), LEGACY["journal.json"])
+
+  paths.migrateLegacyState({ XDG_STATE_HOME: stateRoot }, explicitStore)
+  const dir = migratedDir(stateRoot)
+  for (const [name, content] of Object.entries(LEGACY)) {
+    assert.equal(readFileSync(join(dir, name), "utf8"), content, `${name} must migrate from explicit dir`)
   }
 })

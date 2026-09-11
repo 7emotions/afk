@@ -11,7 +11,7 @@
 // 5 legacy files from their old plugin-dir locations into the state dir.
 
 import { homedir } from "node:os"
-import { mkdirSync, copyFileSync, chmodSync, constants } from "node:fs"
+import { mkdirSync, readFileSync, writeFileSync, linkSync, unlinkSync, chmodSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -26,36 +26,63 @@ export function statePath(env = process.env, name) {
   return join(stateDir(env), name)
 }
 
+// FIX #2: mkdirSync's `mode` only applies to a NEWLY-created directory; an
+// already-existing dir (e.g. 0755) is not tightened. chmod it explicitly so the
+// dir holding the shared secret is always owner-only (0700).
 export function ensureStateDir(env = process.env) {
-  mkdirSync(stateDir(env), { recursive: true, mode: 0o700 })
+  const dir = stateDir(env)
+  mkdirSync(dir, { recursive: true, mode: 0o700 })
+  chmodSync(dir, 0o700)
 }
 
-// The 5 runtime-state files. legacyPath() resolves the CURRENT (legacy)
-// location: the 4 store files live in store/, journal.json lives in core/.
-// name is the target filename under the state dir (journal is NOT nested
-// under stateDir/core/ — it goes to stateDir/journal.json).
 const LEGACY_FILES = [
-  { legacy: () => join(__dirname, "daemon-secret"), name: "daemon-secret", envKey: "AFK_DAEMON_SECRET" },
-  { legacy: () => join(__dirname, "mode.json"), name: "mode.json", envKey: "AFK_MODE" },
-  { legacy: () => join(__dirname, "last-uid.json"), name: "last-uid.json", envKey: "AFK_LAST_UID" },
-  { legacy: () => join(__dirname, "pending.json"), name: "pending.json", envKey: "AFK_PENDING" },
-  { legacy: () => join(__dirname, "..", "core", "journal.json"), name: "journal.json", envKey: "AFK_JOURNAL" },
+  { rel: "daemon-secret", name: "daemon-secret", envKey: "AFK_DAEMON_SECRET" },
+  { rel: "mode.json", name: "mode.json", envKey: "AFK_MODE" },
+  { rel: "last-uid.json", name: "last-uid.json", envKey: "AFK_LAST_UID" },
+  { rel: "pending.json", name: "pending.json", envKey: "AFK_PENDING" },
+  { rel: join("..", "core", "journal.json"), name: "journal.json", envKey: "AFK_JOURNAL" },
 ]
 
-export function migrateLegacyState(env = process.env) {
+// One-shot, non-clobbering, atomic migration of the 5 legacy runtime files into
+// the XDG state dir.
+//
+// FIX #1: `legacyStoreDir` (default = this module's store/ dir) lets the caller
+// (install.js) point migration at a DIFFERENT legacy location — e.g. the old
+// plugin dir's store/ BEFORE install.js `rmSync`s it.
+//
+// FIX #5: an override is skipped only when it is NON-EMPTY (`if (env[envKey])`),
+// matching the consumers' `process.env.AFK_X || statePath(...)` truthiness — so
+// `AFK_MODE=""` no longer skips migration while the consumer reads the default.
+//
+// FIX #3: atomic publish via write-temp + linkSync (hard-link is atomic, and
+// fails EEXIST if the destination exists) instead of copyFileSync — a concurrent
+// reader can never observe a half-written file.
+export function migrateLegacyState(env = process.env, legacyStoreDir = __dirname) {
   ensureStateDir(env)
-  for (const { legacy, name, envKey } of LEGACY_FILES) {
-    if (env[envKey] !== undefined) continue // user set an explicit override — leave state dir alone
-    const src = legacy()
+  for (const { rel, name, envKey } of LEGACY_FILES) {
+    if (env[envKey]) continue
+    const src = join(legacyStoreDir, rel)
     const dst = statePath(env, name)
+    let content
     try {
-      copyFileSync(src, dst, constants.COPYFILE_EXCL) // atomic: fail if target exists
-      chmodSync(dst, 0o600)
+      content = readFileSync(src)
     } catch (err) {
-      // EEXIST = target already exists (skip, never overwrite — avoids split-brain)
-      // ENOENT = no legacy file to migrate (fresh install — skip)
-      if (err && (err.code === "EEXIST" || err.code === "ENOENT")) continue
+      if (err && err.code === "ENOENT") continue // no legacy file to migrate
       throw err
+    }
+    const tmp = `${dst}.tmp-${process.pid}-${Math.random().toString(36).slice(2)}`
+    try {
+      writeFileSync(tmp, content, { mode: 0o600 })
+      linkSync(tmp, dst) // atomic publish; EEXIST if dst already exists
+    } catch (err) {
+      if (err && err.code === "EEXIST") continue // target exists — never overwrite
+      throw err
+    } finally {
+      try {
+        unlinkSync(tmp)
+      } catch {
+        /* tmp may not exist (write failed) or was already linked */
+      }
     }
   }
 }
