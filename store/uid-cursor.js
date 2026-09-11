@@ -19,15 +19,14 @@
 // (AFK_LAST_UID env override, in-memory cache, tolerant read).
 
 import { existsSync, readFileSync, writeFileSync, chmodSync } from "node:fs"
-import { fileURLToPath } from "node:url"
-import { dirname, join } from "node:path"
+import { statePath } from "./paths.js"
 
-// Cursor path: <plugin dir>/last-uid.json by default. AFK_LAST_UID
+// Cursor path: <XDG state dir>/last-uid.json by default. AFK_LAST_UID
 // overrides it (mirrors the AFK_JOURNAL convention; tests use it to keep
 // the real cursor clean).
 const CURSOR_PATH =
   process.env.AFK_LAST_UID ||
-  join(dirname(fileURLToPath(import.meta.url)), "last-uid.json")
+  statePath(process.env, "last-uid.json")
 
 // In-memory cache. null = "not loaded yet" (or no persisted value).
 let cursorCache = null

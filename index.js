@@ -33,6 +33,7 @@ import { loadConfig } from "./config.js"
 import { loadMessages } from "./messages.js"
 import { sendMail, stampSubject, resolveRootSessionID } from "./mailer.js"
 import { bearerHeader } from "./store/secret.js"
+import { migrateLegacyState } from "./store/paths.js"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const DAEMON_PATH = join(__dirname, "daemon.js")
@@ -58,6 +59,7 @@ const DAEMON_ENV_ALLOWLIST = [
   "TMP",
   "TEMP",
   "OPENCODE_CONFIG_DIR",
+  "XDG_STATE_HOME",
   "AFK_DEBUG",
 ]
 
@@ -181,6 +183,10 @@ async function ensureDaemon(daemonUrl) {
 // Plugin entry.
 const server = async (input, _options) => {
   client = input.client
+  // One-shot legacy→XDG state migration MUST run before anything reads or
+  // mints a secret (loadConfig/bearerHeader), otherwise plugin and daemon
+  // could read different secrets → HTTP 401 (issue #12).
+  migrateLegacyState()
   daemonUrl = resolveDaemonUrl()
   const directory = input.directory
   // A stable per-instance identity for claim/ack dedupe. The instance's own

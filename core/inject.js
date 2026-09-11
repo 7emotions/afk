@@ -12,15 +12,15 @@
 // No IMAP fetch/search (T5), no reply parsing (T6), no SMTP. Node ESM, no deps.
 
 import { existsSync, readFileSync, writeFileSync, chmodSync } from "node:fs"
-import { fileURLToPath } from "node:url"
-import { dirname, join } from "node:path"
+import { statePath } from "../store/paths.js"
 
-// Journal path: <plugin dir>/journal.json by default. AFK_JOURNAL
-// overrides it (mirrors the AFK_* config override convention; the unit
-// test uses it to keep the real journal clean).
+// Journal path: <stable XDG state dir>/journal.json by default (issue #12;
+// survives @latest reinstalls). AFK_JOURNAL overrides it (mirrors the AFK_*
+// config override convention; the unit test uses it to keep the real journal
+// clean).
 const JOURNAL_PATH =
   process.env.AFK_JOURNAL ||
-  join(dirname(fileURLToPath(import.meta.url)), "journal.json")
+  statePath(process.env, "journal.json")
 
 // In-memory cache of the journal array. null = "not loaded yet".
 let journalCache = null

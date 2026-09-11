@@ -58,6 +58,8 @@ cp <插件目录>/config.example.json ~/.config/opencode/afk.json
 
 > **更新**：维护者发布新版本后，你只需**重启 opencode**，`@latest` 即自动跟进——无需手动拷贝或运行安装器，配置也不会被刷新目录覆盖。
 
+> **运行时状态与迁移**：运行时状态文件（`daemon-secret`、`mode.json`、`last-uid.json`、`pending.json`、`journal.json`）现存放于 XDG 状态目录 `~/.local/state/opencode/afk/`（可用 `XDG_STATE_HOME` 覆盖），因此每次 `opencode-afk@latest` 重装插件后它们依然存活。首次运行时会做一次性迁移：当旧的 `<插件目录>/store/*` 与 `<插件目录>/core/journal.json` 仍存在时，将其复制进状态目录（绝不覆盖已有文件）。**迁移是尽力而为的**：只有当旧文件仍在时才能恢复（源码安装 / 原地升级）；若在全新的 npm `@latest` 目录中旧 store 已被清除，则此前状态无法找回，但从今往后不会再丢失。**升级后请重启 opencode。**
+
 ### 复制粘贴式安装（直接交给你的 LLM）
 
 将以下内容粘贴给任意编码智能体，让它照着在你的 opencode 环境中完成安装：
@@ -283,6 +285,7 @@ OpenCode 会从全局命令目录 `~/.config/opencode/command(s)/<name>.md`（�
 | `AFK_LAST_UID` | UID 游标文件路径（检测状态） |
 | `AFK_PENDING` | pending-store 文件路径（持久化投递） |
 | `AFK_MODE` | 模式存储文件路径（GLOBAL 邮件模式，`mode.json`） |
+| `AFK_DAEMON_SECRET` | 守护进程共享密钥文件路径（守护进程 HTTP 鉴权 + 路由令牌签名）；默认 `$XDG_STATE_HOME/opencode/afk/daemon-secret` |
 | `AFK_DAEMON_URL` | 守护进程基础 URL（默认 `http://127.0.0.1:4100`） |
 | `AFK_DAEMON_HOST` / `AFK_DAEMON_PORT` | 守护进程绑定主机/端口（默认 `127.0.0.1` / `4100`） |
 | `AFK_DEBUG` | 设为 `1`/`true` 以启用调试日志 |

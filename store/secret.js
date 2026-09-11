@@ -19,15 +19,14 @@
 
 import { existsSync, readFileSync, writeFileSync, chmodSync } from "node:fs"
 import { randomBytes, createHmac, timingSafeEqual } from "node:crypto"
-import { fileURLToPath } from "node:url"
-import { dirname, join } from "node:path"
+import { statePath } from "./paths.js"
 
 // Secret path: <store>/daemon-secret by default. AFK_DAEMON_SECRET overrides it
 // (mirrors the AFK_JOURNAL / AFK_LAST_UID / AFK_PENDING / AFK_MODE convention;
 // tests use it to keep the real file clean).
 const SECRET_PATH =
   process.env.AFK_DAEMON_SECRET ||
-  join(dirname(fileURLToPath(import.meta.url)), "daemon-secret")
+  statePath(process.env, "daemon-secret")
 
 /** @returns {string} The secret file path (exposed for tests/diagnostics). */
 export function secretPath() {

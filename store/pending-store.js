@@ -28,15 +28,14 @@
 // arrived as a number (IMAP search) or a string (JSON over HTTP).
 
 import { existsSync, readFileSync, writeFileSync, chmodSync } from "node:fs"
-import { fileURLToPath } from "node:url"
-import { dirname, join } from "node:path"
+import { statePath } from "./paths.js"
 
-// Pending path: <plugin dir>/pending.json by default. AFK_PENDING
+// Pending path: <XDG state dir>/pending.json by default. AFK_PENDING
 // overrides it (mirrors the AFK_JOURNAL / AFK_LAST_UID convention;
 // tests use it to keep the real file clean).
 const PENDING_PATH =
   process.env.AFK_PENDING ||
-  join(dirname(fileURLToPath(import.meta.url)), "pending.json")
+  statePath(process.env, "pending.json")
 
 // How long a claim stays authoritative before another instance may steal it.
 // In-process injection + ack completes in milliseconds, so 60s is generous for

@@ -15,6 +15,7 @@ process.env.AFK_DAEMON_SECRET = join(tmp, "daemon-secret")
 const { createPendingStore } = await import("../store/pending-store.js")
 const { createModeStore } = await import("../store/mode-store.js")
 const { ensureSecret } = await import("../store/secret.js")
+const { ensureStateDir } = await import("../store/paths.js")
 
 after(() => {
   rmSync(tmp, { recursive: true, force: true })
@@ -39,4 +40,9 @@ test("mode-store writes 0600", () => {
 test("the shared secret is created 0600 (issues #3/#5)", () => {
   ensureSecret()
   assert.equal(mode(join(tmp, "daemon-secret")), 0o600)
+})
+
+test("ensureStateDir creates the state dir 0700 (issue #12)", () => {
+  ensureStateDir({ XDG_STATE_HOME: join(tmp, "state-home") })
+  assert.equal(mode(join(tmp, "state-home", "opencode", "afk")), 0o700)
 })

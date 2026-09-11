@@ -18,13 +18,12 @@
 // clean).
 
 import { existsSync, readFileSync, writeFileSync, chmodSync } from "node:fs"
-import { fileURLToPath } from "node:url"
-import { dirname, join } from "node:path"
+import { statePath } from "./paths.js"
 
-// Mode path: <plugin dir>/mode.json by default. AFK_MODE overrides it.
+// Mode path: stable XDG state dir/mode.json by default. AFK_MODE overrides it.
 const MODE_PATH =
   process.env.AFK_MODE ||
-  join(dirname(fileURLToPath(import.meta.url)), "mode.json")
+  statePath(process.env, "mode.json")
 
 // The safe default: refuse to email until the human opts in.
 export const DEFAULT_MODE = "off"
@@ -45,7 +44,7 @@ function load(path) {
  * Create the durable global mode store.
  *
  * @param {object} [opts]
- * @param {string} [opts.path]  JSON file path (default mode.json next to this module).
+ * @param {string} [opts.path]  JSON file path (default mode.json in the XDG state dir).
  * @returns {{get: () => string, set: (mode: string) => string}}
  */
 export function createModeStore(opts = {}) {
