@@ -43,3 +43,17 @@ test("daemonEnv drops undefined values", () => {
   assert.equal(out.AFK_X, "1")
   assert.equal(out.HOME, "/h")
 })
+
+test("daemonEnv forwards XDG_STATE_HOME but drops secrets and unrelated vars (issue #12)", () => {
+  const env = {
+    XDG_STATE_HOME: "/custom/state",
+    ANTHROPIC_API_KEY: "sk-super-secret",
+    SOME_UNRELATED_VAR: "leak-me",
+  }
+
+  const out = daemonEnv(env)
+
+  assert.equal(out.XDG_STATE_HOME, "/custom/state")
+  assert.ok(!("ANTHROPIC_API_KEY" in out), "the daemon must NOT inherit the LLM API key")
+  assert.ok(!("SOME_UNRELATED_VAR" in out), "the daemon must NOT inherit unrelated vars")
+})

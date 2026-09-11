@@ -39,6 +39,7 @@ import { createPendingStore } from "./store/pending-store.js"
 import { createModeStore } from "./store/mode-store.js"
 import { markSeenAndJournal } from "./core/inject.js"
 import { ensureSecret, constantTimeEqual } from "./store/secret.js"
+import { migrateLegacyState } from "./store/paths.js"
 const DEFAULT_PORT = 4100
 const DEFAULT_HOST = "127.0.0.1"
 const MAX_BODY_BYTES = 1_000_000
@@ -374,6 +375,10 @@ function bindServer(server, host, port) {
  * and install signal handlers. Does not return until shutdown.
  */
 export async function startDaemon() {
+  // One-shot legacy→XDG state migration MUST run before ensureSecret() so the
+  // daemon never mints a fresh secret while the legacy one still exists
+  // (plugin and daemon would then authenticate with different secrets).
+  migrateLegacyState()
   const port = Number(process.env.AFK_DAEMON_PORT || DEFAULT_PORT)
   const host = process.env.AFK_DAEMON_HOST || DEFAULT_HOST
 
