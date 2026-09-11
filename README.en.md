@@ -68,6 +68,18 @@ it **survives every `@latest` update that reinstalls the plugin**.
 > and `@latest` is picked up automatically — no manual copying, no installer, and
 > your config is never overwritten by the fresh package directory.
 
+> **Runtime state & migration:** the runtime state files (`daemon-secret`,
+> `mode.json`, `last-uid.json`, `pending.json`, `journal.json`) now live in the
+> XDG state dir `~/.local/state/opencode/afk/` (override with `XDG_STATE_HOME`),
+> so they survive every `opencode-afk@latest` plugin reinstall. On first run a
+> one-time migration copies the legacy `<plugin>/store/*` and
+> `<plugin>/core/journal.json` into the state dir when those files still exist
+> (never overwriting an existing target). **Migration is best-effort:** it
+> recovers state only when the legacy files are still present (source installs /
+> in-place upgrades); on a fresh npm `@latest` directory where the old store is
+> already gone, prior state cannot be recovered, but it will no longer be lost
+> going forward. **Restart opencode after upgrading.**
+
 ### Copy-paste install — give this to your LLM
 
 Paste this into any coding agent to have it install the plugin in your opencode environment:
@@ -352,6 +364,7 @@ Every connection field is overridable via env vars (they take precedence over
 | `AFK_LAST_UID` | UID-cursor file path (detection state) |
 | `AFK_PENDING` | Pending-store file path (durable deliveries) |
 | `AFK_MODE` | Mode-store file path (GLOBAL email mode, `mode.json`) |
+| `AFK_DAEMON_SECRET` | Daemon shared secret file path (daemon HTTP auth + routing-token signing); default `$XDG_STATE_HOME/opencode/afk/daemon-secret` |
 | `AFK_DAEMON_URL` | Daemon base URL (default `http://127.0.0.1:4100`) |
 | `AFK_DAEMON_HOST` / `AFK_DAEMON_PORT` | Daemon bind host/port (default `127.0.0.1` / `4100`) |
 | `AFK_DEBUG` | `1`/`true` to enable debug logging |
