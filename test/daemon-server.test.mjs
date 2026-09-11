@@ -9,18 +9,25 @@
 
 import { test, before, after } from "node:test"
 import assert from "node:assert/strict"
+import { mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 
 import { createRegistry } from "../store/registry.js"
 import { createPendingStore } from "../store/pending-store.js"
+import { createModeStore } from "../store/mode-store.js"
 import { createHttpServer } from "../daemon.js"
+
+const tmp = mkdtempSync(join(tmpdir(), "afk-daemon-server-"))
 
 let server
 let baseUrl
 const registry = createRegistry()
-const pendingStore = createPendingStore({ path: "/tmp/afk-daemon-server-pending.json" })
+const pendingStore = createPendingStore({ path: join(tmp, "pending.json") })
 
 before(async () => {
-  const built = createHttpServer(registry, pendingStore)
+  const modeStore = createModeStore({ path: join(tmp, "mode.json") })
+  const built = createHttpServer(registry, pendingStore, { modeStore })
   server = built.server
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve))
   baseUrl = `http://127.0.0.1:${server.address().port}`
@@ -28,6 +35,7 @@ before(async () => {
 
 after(async () => {
   await new Promise((resolve) => server.close(resolve))
+  rmSync(tmp, { recursive: true, force: true })
 })
 
 test("GET /health → {ok:true}", async () => {
