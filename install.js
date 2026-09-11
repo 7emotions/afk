@@ -37,6 +37,7 @@ const EXCLUDED = new Set([
   "pending.json",
   "last-uid.json",
   "mode.json",
+  "daemon-secret",
 ])
 
 const log = (msg) => console.log(`[afk] ${msg}`)
