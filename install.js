@@ -21,6 +21,7 @@ import {
 import { join, dirname, basename, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { execSync } from "node:child_process"
+import { migrateLegacyState } from "./store/paths.js"
 
 const SRC = dirname(fileURLToPath(import.meta.url))
 const CONFIG_DIR = process.env.OPENCODE_CONFIG_DIR || join(homedir(), ".config", "opencode")
@@ -93,6 +94,17 @@ function main() {
       const entries = readdirSync(pluginDirResolved).filter((n) => n !== ".git")
       if (entries.length > 0 && !existsSync(join(pluginDirResolved, "package.json"))) {
         fail(`refusing to install: ${pluginDirResolved} exists but is not an afk install (missing package.json marker)`)
+      }
+    }
+    // FIX #1 (Copilot review): migrate the OLD plugin dir's runtime state into
+    // the XDG state dir BEFORE rmSync deletes it — otherwise a source-install
+    // upgrade loses the legacy daemon-secret / mode / cursor / pending / journal.
+    if (existsSync(join(pluginDirResolved, "store"))) {
+      try {
+        migrateLegacyState(process.env, join(pluginDirResolved, "store"))
+        log("migrated legacy runtime state to the XDG state dir")
+      } catch (err) {
+        log(`(legacy state migration skipped: ${err && err.message ? err.message : err})`)
       }
     }
     log(`copying to ${PLUGIN_DIR}`)

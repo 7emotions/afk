@@ -82,3 +82,15 @@ test("install.js EXCLUDED blocks daemon-secret but keeps source files (issue #12
   assert.ok(!excluded.includes("paths.js"), "paths.js is a source file and must still be copied")
   assert.ok(!excluded.includes("secret.js"), "secret.js is a source file and must still be copied")
 })
+
+test("install.js migrates legacy state before rmSync (Copilot FIX #1)", () => {
+  const src = readFileSync(INSTALL, "utf8")
+  const migrateIdx = src.indexOf("migrateLegacyState(")
+  const rmIdx = src.indexOf("rmSync(pluginDirResolved")
+  assert.ok(migrateIdx !== -1, "migrateLegacyState( call not found in install.js")
+  assert.ok(rmIdx !== -1, "rmSync(pluginDirResolved call not found in install.js")
+  assert.ok(
+    migrateIdx < rmIdx,
+    "migrateLegacyState must run before rmSync, otherwise the legacy store is deleted before migration",
+  )
+})
